@@ -53,6 +53,16 @@ namespace DP832PowerSupply
         AnsiConsole.MarkupLine("[green]Thank you for using DP832 Power Supply Controller![/]");
     }
 
+    static void ShowFigletTitle()
+    {
+        var figlet = new FigletText("DP832")
+            .Centered()
+            .Color(Color.Blue);
+        
+        AnsiConsole.Write(figlet);
+        AnsiConsole.WriteLine();
+    }
+
     static void ShowTitle()
     {
         var rule = new Rule("[bold blue]DP832 Power Supply Controller[/]");
