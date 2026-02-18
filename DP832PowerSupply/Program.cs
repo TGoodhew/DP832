@@ -68,10 +68,10 @@ namespace DP832PowerSupply
             "This application allows you to connect to the Rigol DP832 programmable DC power supply\n" +
             "using SCPI commands over GPIB or TCPIP interfaces via NI-VISA.\n\n" +
             "[yellow]Current Features:[/]\n" +
-            "  • Configure GPIB/TCPIP device address\n" +
-            "  • Connect and disconnect from the power supply\n" +
-            "  • Query device identification (*IDN?)\n" +
-            "  • View connection status and settings\n\n" +
+            " - Configure GPIB/TCPIP device address\n" +
+            " - Connect and disconnect from the power supply\n" +
+            " - Query device identification (*IDN?)\n" +
+            " - View connection status and settings\n\n" +
             "[dim]Powered by NI-VISA and Spectre.Console[/]"
         )
         {
