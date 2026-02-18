@@ -654,7 +654,7 @@ namespace DP832PowerSupply
             bool ocpEnabled2 = ParseProtectionState(ocpStateStr2);
 
             table.AddRow("OCP Level", $"[yellow]{ocpLevel:F3}A[/]", "-");
-            table.AddRow("OCP State", ocpEnabled ? "[green]Enabled[/]" : "[red]Disabled[/]", "-");
+            table.AddRow("OCP State", ocpEnabled2 ? "[green]Enabled[/]" : "[red]Disabled[/]", "-");
 
             AnsiConsole.Write(table);
         }
