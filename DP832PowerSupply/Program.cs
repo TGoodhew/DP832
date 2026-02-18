@@ -31,6 +31,9 @@ namespace DP832PowerSupply
                 case "Disconnect from Device":
                     DisconnectFromDevice();
                     break;
+                case "Channel Controls":
+                    ChannelControlsMenu();
+                    break;
                 case "Show Current Settings":
                     ShowCurrentSettings();
                     break;
@@ -84,7 +87,9 @@ namespace DP832PowerSupply
             " - Configure GPIB/TCPIP device address\n" +
             " - Connect and disconnect from the power supply\n" +
             " - Query device identification (*IDN?)\n" +
-            " - View connection status and settings\n\n" +
+            " - View connection status and settings\n" +
+            " - Control voltage and current for each channel\n" +
+            " - Configure OVP (Over Voltage Protection) and OCP (Over Current Protection)\n\n" +
             "[dim]Powered by NI-VISA and Spectre.Console[/]"
         )
         {
@@ -114,6 +119,7 @@ namespace DP832PowerSupply
                     "Configure Device Address",
                     "Connect to Device",
                     "Disconnect from Device",
+                    "Channel Controls",
                     "Show Current Settings",
                     "Exit"
                 }));
@@ -272,6 +278,378 @@ namespace DP832PowerSupply
         }
         
         AnsiConsole.Write(table);
+    }
+
+    static void ChannelControlsMenu()
+    {
+        if (visaSession == null)
+        {
+            AnsiConsole.MarkupLine("[red]✗[/] Not connected to device. Please connect first.");
+            return;
+        }
+
+        bool exitChannelMenu = false;
+        while (!exitChannelMenu)
+        {
+            AnsiConsole.WriteLine();
+            var channelChoice = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("[bold cyan]Select a Channel to Control:[/]")
+                    .PageSize(10)
+                    .AddChoices(new[] {
+                        "Channel 1 (CH1) - 30V/3A",
+                        "Channel 2 (CH2) - 30V/3A",
+                        "Channel 3 (CH3) - 5V/3A",
+                        "Back to Main Menu"
+                    }));
+
+            if (channelChoice == "Back to Main Menu")
+            {
+                exitChannelMenu = true;
+            }
+            else
+            {
+                // Extract channel number
+                int channelNum = channelChoice.Contains("Channel 1") ? 1 :
+                                channelChoice.Contains("Channel 2") ? 2 : 3;
+                
+                ChannelControlSubMenu(channelNum);
+            }
+        }
+    }
+
+    static void ChannelControlSubMenu(int channelNum)
+    {
+        string channelName = $"CH{channelNum}";
+        
+        // Get max voltage based on channel
+        double maxVoltage = (channelNum == 3) ? 5.0 : 30.0;
+        double maxCurrent = 3.0;
+
+        bool exitSubMenu = false;
+        while (!exitSubMenu)
+        {
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine($"[bold cyan]Controls for {channelName}[/]");
+            AnsiConsole.WriteLine();
+            
+            var controlChoice = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title($"What would you like to control for [yellow]{channelName}[/]?")
+                    .PageSize(10)
+                    .AddChoices(new[] {
+                        "Set Voltage",
+                        "Set Current",
+                        "Configure OVP (Over Voltage Protection)",
+                        "Configure OCP (Over Current Protection)",
+                        "View Channel Status",
+                        "Back to Channel Selection"
+                    }));
+
+            switch (controlChoice)
+            {
+                case "Set Voltage":
+                    SetChannelVoltage(channelNum, maxVoltage);
+                    break;
+                case "Set Current":
+                    SetChannelCurrent(channelNum, maxCurrent);
+                    break;
+                case "Configure OVP (Over Voltage Protection)":
+                    ConfigureOVP(channelNum, maxVoltage);
+                    break;
+                case "Configure OCP (Over Current Protection)":
+                    ConfigureOCP(channelNum, maxCurrent);
+                    break;
+                case "View Channel Status":
+                    ViewChannelStatus(channelNum);
+                    break;
+                case "Back to Channel Selection":
+                    exitSubMenu = true;
+                    break;
+            }
+
+            if (!exitSubMenu)
+            {
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
+                Console.ReadKey(true);
+            }
+        }
+    }
+
+    static void SetChannelVoltage(int channelNum, double maxVoltage)
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine($"[bold cyan]Set Voltage for CH{channelNum}[/]");
+        AnsiConsole.MarkupLine($"[grey]Maximum voltage for CH{channelNum}: {maxVoltage}V[/]");
+        AnsiConsole.WriteLine();
+
+        try
+        {
+            // Query current voltage setting
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT?");
+            string currentVoltStr = visaSession.FormattedIO.ReadLine();
+            double currentVolt = double.Parse(currentVoltStr);
+            
+            AnsiConsole.MarkupLine($"[yellow]Current voltage setting:[/] {currentVolt:F3}V");
+            AnsiConsole.WriteLine();
+
+            var voltage = AnsiConsole.Prompt(
+                new TextPrompt<double>($"Enter [green]voltage[/] (0 to {maxVoltage}V):")
+                    .DefaultValue(currentVolt)
+                    .ValidationErrorMessage($"[red]Please enter a valid voltage between 0 and {maxVoltage}V[/]")
+                    .Validate(v =>
+                    {
+                        if (v < 0 || v > maxVoltage)
+                            return ValidationResult.Error($"[red]Voltage must be between 0 and {maxVoltage}V[/]");
+                        return ValidationResult.Success();
+                    }));
+
+            // Set the voltage
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT {voltage:F3}");
+            
+            // Verify by reading back
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT?");
+            string newVoltStr = visaSession.FormattedIO.ReadLine();
+            double newVolt = double.Parse(newVoltStr);
+            
+            AnsiConsole.MarkupLine($"[green]✓[/] Voltage set to: [yellow]{newVolt:F3}V[/]");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]✗ Error setting voltage:[/] {Markup.Escape(ex.Message)}");
+        }
+    }
+
+    static void SetChannelCurrent(int channelNum, double maxCurrent)
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine($"[bold cyan]Set Current for CH{channelNum}[/]");
+        AnsiConsole.MarkupLine($"[grey]Maximum current for CH{channelNum}: {maxCurrent}A[/]");
+        AnsiConsole.WriteLine();
+
+        try
+        {
+            // Query current setting
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR?");
+            string currentAmpStr = visaSession.FormattedIO.ReadLine();
+            double currentAmp = double.Parse(currentAmpStr);
+            
+            AnsiConsole.MarkupLine($"[yellow]Current setting:[/] {currentAmp:F3}A");
+            AnsiConsole.WriteLine();
+
+            var current = AnsiConsole.Prompt(
+                new TextPrompt<double>($"Enter [green]current limit[/] (0 to {maxCurrent}A):")
+                    .DefaultValue(currentAmp)
+                    .ValidationErrorMessage($"[red]Please enter a valid current between 0 and {maxCurrent}A[/]")
+                    .Validate(c =>
+                    {
+                        if (c < 0 || c > maxCurrent)
+                            return ValidationResult.Error($"[red]Current must be between 0 and {maxCurrent}A[/]");
+                        return ValidationResult.Success();
+                    }));
+
+            // Set the current
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR {current:F3}");
+            
+            // Verify by reading back
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR?");
+            string newCurrentStr = visaSession.FormattedIO.ReadLine();
+            double newCurrent = double.Parse(newCurrentStr);
+            
+            AnsiConsole.MarkupLine($"[green]✓[/] Current limit set to: [yellow]{newCurrent:F3}A[/]");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]✗ Error setting current:[/] {Markup.Escape(ex.Message)}");
+        }
+    }
+
+    static void ConfigureOVP(int channelNum, double maxVoltage)
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine($"[bold cyan]Configure OVP (Over Voltage Protection) for CH{channelNum}[/]");
+        AnsiConsole.WriteLine();
+
+        try
+        {
+            // Query current OVP value
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT?");
+            string currentOvpStr = visaSession.FormattedIO.ReadLine();
+            double currentOvp = double.Parse(currentOvpStr);
+            
+            // Query current OVP state
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:STAT?");
+            string stateStr = visaSession.FormattedIO.ReadLine().Trim();
+            bool ovpEnabled = (stateStr == "ON" || stateStr == "1");
+            
+            AnsiConsole.MarkupLine($"[yellow]Current OVP level:[/] {currentOvp:F3}V");
+            AnsiConsole.MarkupLine($"[yellow]Current OVP state:[/] {(ovpEnabled ? "[green]Enabled[/]" : "[red]Disabled[/]")}");
+            AnsiConsole.WriteLine();
+
+            // Ask if user wants to change OVP level
+            if (AnsiConsole.Confirm($"Change OVP level? (Current: {currentOvp:F3}V)", false))
+            {
+                var ovpLevel = AnsiConsole.Prompt(
+                    new TextPrompt<double>($"Enter [green]OVP level[/] (0.01 to {maxVoltage + 0.1}V):")
+                        .DefaultValue(currentOvp)
+                        .ValidationErrorMessage($"[red]Please enter a valid OVP level[/]")
+                        .Validate(v =>
+                        {
+                            if (v < 0.01 || v > maxVoltage + 1)
+                                return ValidationResult.Error($"[red]OVP must be between 0.01 and {maxVoltage + 1}V[/]");
+                            return ValidationResult.Success();
+                        }));
+
+                visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT {ovpLevel:F3}");
+                AnsiConsole.MarkupLine($"[green]✓[/] OVP level set to: [yellow]{ovpLevel:F3}V[/]");
+            }
+
+            AnsiConsole.WriteLine();
+            
+            // Ask if user wants to enable/disable OVP
+            var enableOvp = AnsiConsole.Confirm("Enable OVP?", ovpEnabled);
+            
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:STAT {(enableOvp ? "ON" : "OFF")}");
+            AnsiConsole.MarkupLine($"[green]✓[/] OVP {(enableOvp ? "[green]enabled[/]" : "[red]disabled[/]")}");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]✗ Error configuring OVP:[/] {Markup.Escape(ex.Message)}");
+        }
+    }
+
+    static void ConfigureOCP(int channelNum, double maxCurrent)
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine($"[bold cyan]Configure OCP (Over Current Protection) for CH{channelNum}[/]");
+        AnsiConsole.WriteLine();
+
+        try
+        {
+            // Query current OCP value
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT?");
+            string currentOcpStr = visaSession.FormattedIO.ReadLine();
+            double currentOcp = double.Parse(currentOcpStr);
+            
+            // Query current OCP state
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:STAT?");
+            string stateStr = visaSession.FormattedIO.ReadLine().Trim();
+            bool ocpEnabled = (stateStr == "ON" || stateStr == "1");
+            
+            AnsiConsole.MarkupLine($"[yellow]Current OCP level:[/] {currentOcp:F3}A");
+            AnsiConsole.MarkupLine($"[yellow]Current OCP state:[/] {(ocpEnabled ? "[green]Enabled[/]" : "[red]Disabled[/]")}");
+            AnsiConsole.WriteLine();
+
+            // Ask if user wants to change OCP level
+            if (AnsiConsole.Confirm($"Change OCP level? (Current: {currentOcp:F3}A)", false))
+            {
+                var ocpLevel = AnsiConsole.Prompt(
+                    new TextPrompt<double>($"Enter [green]OCP level[/] (0.001 to {maxCurrent + 0.1}A):")
+                        .DefaultValue(currentOcp)
+                        .ValidationErrorMessage($"[red]Please enter a valid OCP level[/]")
+                        .Validate(c =>
+                        {
+                            if (c < 0.001 || c > maxCurrent + 1)
+                                return ValidationResult.Error($"[red]OCP must be between 0.001 and {maxCurrent + 1}A[/]");
+                            return ValidationResult.Success();
+                        }));
+
+                visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT {ocpLevel:F3}");
+                AnsiConsole.MarkupLine($"[green]✓[/] OCP level set to: [yellow]{ocpLevel:F3}A[/]");
+            }
+
+            AnsiConsole.WriteLine();
+            
+            // Ask if user wants to enable/disable OCP
+            var enableOcp = AnsiConsole.Confirm("Enable OCP?", ocpEnabled);
+            
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:STAT {(enableOcp ? "ON" : "OFF")}");
+            AnsiConsole.MarkupLine($"[green]✓[/] OCP {(enableOcp ? "[green]enabled[/]" : "[red]disabled[/]")}");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]✗ Error configuring OCP:[/] {Markup.Escape(ex.Message)}");
+        }
+    }
+
+    static void ViewChannelStatus(int channelNum)
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine($"[bold cyan]Channel Status for CH{channelNum}[/]");
+        AnsiConsole.WriteLine();
+
+        try
+        {
+            var table = new Table();
+            table.Border(TableBorder.Rounded);
+            table.BorderStyle(new Style(Color.Cyan1));
+            table.AddColumn(new TableColumn("[bold]Parameter[/]").Centered());
+            table.AddColumn(new TableColumn("[bold]Setting[/]").Centered());
+            table.AddColumn(new TableColumn("[bold]Measured[/]").Centered());
+
+            // Query voltage settings and measurements
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT?");
+            string voltSettingStr = visaSession.FormattedIO.ReadLine();
+            double voltSetting = double.Parse(voltSettingStr);
+
+            visaSession.FormattedIO.WriteLine($":MEAS:VOLT? CH{channelNum}");
+            string voltMeasStr = visaSession.FormattedIO.ReadLine();
+            double voltMeas = double.Parse(voltMeasStr);
+
+            table.AddRow("Voltage", $"[yellow]{voltSetting:F3}V[/]", $"[cyan]{voltMeas:F3}V[/]");
+
+            // Query current settings and measurements
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR?");
+            string currSettingStr = visaSession.FormattedIO.ReadLine();
+            double currSetting = double.Parse(currSettingStr);
+
+            visaSession.FormattedIO.WriteLine($":MEAS:CURR? CH{channelNum}");
+            string currMeasStr = visaSession.FormattedIO.ReadLine();
+            double currMeas = double.Parse(currMeasStr);
+
+            table.AddRow("Current", $"[yellow]{currSetting:F3}A[/]", $"[cyan]{currMeas:F3}A[/]");
+
+            // Query power measurement
+            visaSession.FormattedIO.WriteLine($":MEAS:POWE? CH{channelNum}");
+            string powerStr = visaSession.FormattedIO.ReadLine();
+            double power = double.Parse(powerStr);
+
+            table.AddRow("Power", "-", $"[cyan]{power:F3}W[/]");
+
+            // Add separator
+            table.AddEmptyRow();
+
+            // Query OVP settings
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT?");
+            string ovpLevelStr = visaSession.FormattedIO.ReadLine();
+            double ovpLevel = double.Parse(ovpLevelStr);
+
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:STAT?");
+            string ovpStateStr = visaSession.FormattedIO.ReadLine().Trim();
+            bool ovpEnabled = (ovpStateStr == "ON" || ovpStateStr == "1");
+
+            table.AddRow("OVP Level", $"[yellow]{ovpLevel:F3}V[/]", "-");
+            table.AddRow("OVP State", ovpEnabled ? "[green]Enabled[/]" : "[red]Disabled[/]", "-");
+
+            // Query OCP settings
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT?");
+            string ocpLevelStr = visaSession.FormattedIO.ReadLine();
+            double ocpLevel = double.Parse(ocpLevelStr);
+
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:STAT?");
+            string ocpStateStr = visaSession.FormattedIO.ReadLine().Trim();
+            bool ocpEnabled = (ocpStateStr == "ON" || ocpStateStr == "1");
+
+            table.AddRow("OCP Level", $"[yellow]{ocpLevel:F3}A[/]", "-");
+            table.AddRow("OCP State", ocpEnabled ? "[green]Enabled[/]" : "[red]Disabled[/]", "-");
+
+            AnsiConsole.Write(table);
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]✗ Error reading channel status:[/] {Markup.Escape(ex.Message)}");
+        }
     }
 }
 }

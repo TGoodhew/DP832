@@ -19,19 +19,24 @@ This application currently provides:
 - ⚙️ **Easy Configuration** - Simple device address setup with guided prompts
 - 📡 **Device Identification** - Query device information via *IDN? SCPI command
 - 🎯 **User-Friendly** - Interactive menu-driven interface
+- ⚡ **Channel Control** - Full voltage and current control for all three channels
+- 🛡️ **Protection Controls** - Configure OVP and OCP for safe operation
 
 ### Current Capabilities
 - Configure and change VISA resource address (GPIB/TCPIP/Custom)
 - Connect to and disconnect from the power supply
 - Query device identification (*IDN?)
 - Display connection status and settings
+- **Channel voltage and current control** for all three channels
+- **OVP (Over Voltage Protection)** configuration and control
+- **OCP (Over Current Protection)** configuration and control
+- Real-time monitoring of voltage, current, and power readings per channel
+- View detailed channel status with protection settings
 
 ### Planned Features
 The following capabilities are planned for future releases:
 - General SCPI command sending interface
-- Channel voltage and current control
 - Output enable/disable controls
-- Real-time monitoring of voltage, current, and power readings
 - Logging and data capture
 
 ## Prerequisites
@@ -118,8 +123,18 @@ Format: `USB0::0x1AB1::0x0E11::DP8XXXXXXXXX::INSTR`
 1. **Configure Device Address** - Set or change the GPIB/TCPIP address
 2. **Connect to Device** - Establish connection to the power supply
 3. **Disconnect from Device** - Close the connection
-4. **Show Current Settings** - Display current configuration and device info
-5. **Exit** - Close the application
+4. **Channel Controls** - Access voltage, current, OVP, and OCP controls for each channel
+5. **Show Current Settings** - Display current configuration and device info
+6. **Exit** - Close the application
+
+### Channel Controls
+
+The Channel Controls menu provides access to all three channels (CH1, CH2, CH3) with the following capabilities for each:
+- **Set Voltage** - Configure output voltage (CH1/CH2: 0-30V, CH3: 0-5V)
+- **Set Current** - Configure current limit (all channels: 0-3A)
+- **Configure OVP** - Set Over Voltage Protection level and enable/disable protection
+- **Configure OCP** - Set Over Current Protection level and enable/disable protection
+- **View Channel Status** - Display real-time voltage, current, power readings and protection settings
 
 ## SCPI Commands Reference
 
@@ -143,6 +158,16 @@ The DP832 supports standard SCPI commands for control and measurement:
 - `:SOURce<CH>:CURRent <value>` - Set current limit
 - `:SOURce<CH>:CURRent?` - Query current setting
 - `:MEASure:CURRent? <CH>` - Measure actual current
+
+### Protection Control
+- `:SOURce<CH>:VOLTage:PROTection <value>` - Set OVP level
+- `:SOURce<CH>:VOLTage:PROTection?` - Query OVP level
+- `:SOURce<CH>:VOLTage:PROTection:STATe <ON|OFF>` - Enable/disable OVP
+- `:SOURce<CH>:VOLTage:PROTection:STATe?` - Query OVP state
+- `:SOURce<CH>:CURRent:PROTection <value>` - Set OCP level
+- `:SOURce<CH>:CURRent:PROTection?` - Query OCP level
+- `:SOURce<CH>:CURRent:PROTection:STATe <ON|OFF>` - Enable/disable OCP
+- `:SOURce<CH>:CURRent:PROTection:STATe?` - Query OCP state
 
 ### Power Measurement
 - `:MEASure:POWEr? <CH>` - Measure output power
