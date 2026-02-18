@@ -64,13 +64,13 @@ class Program
     {
         var panel = new Panel(
             "[bold]Welcome to the DP832 Power Supply Control Application[/]\n\n" +
-            "This application allows you to control the Rigol DP832 programmable DC power supply\n" +
+            "This application allows you to connect to the Rigol DP832 programmable DC power supply\n" +
             "using SCPI commands over GPIB or TCPIP interfaces via NI-VISA.\n\n" +
-            "[yellow]Features:[/]\n" +
+            "[yellow]Current Features:[/]\n" +
             "  • Configure GPIB/TCPIP device address\n" +
-            "  • Connect and communicate with the power supply\n" +
-            "  • Send SCPI commands for device control\n" +
-            "  • Monitor device status and readings\n\n" +
+            "  • Connect and disconnect from the power supply\n" +
+            "  • Query device identification (*IDN?)\n" +
+            "  • View connection status and settings\n\n" +
             "[dim]Powered by NI-VISA and Spectre.Console[/]"
         )
         {
@@ -87,7 +87,7 @@ class Program
     {
         var connectionStatus = visaSession != null ? "[green]Connected[/]" : "[red]Disconnected[/]";
         
-        AnsiConsole.MarkupLine($"[bold]Current Device Address:[/] [yellow]{deviceAddress}[/]");
+        AnsiConsole.MarkupLine($"[bold]Current Device Address:[/] [yellow]{Markup.Escape(deviceAddress)}[/]");
         AnsiConsole.MarkupLine($"[bold]Connection Status:[/] {connectionStatus}");
         AnsiConsole.WriteLine();
         
@@ -150,7 +150,7 @@ class Program
         if (!string.IsNullOrWhiteSpace(newAddress))
         {
             deviceAddress = newAddress;
-            AnsiConsole.MarkupLine($"[green]✓[/] Device address updated to: [yellow]{deviceAddress}[/]");
+            AnsiConsole.MarkupLine($"[green]✓[/] Device address updated to: [yellow]{Markup.Escape(deviceAddress)}[/]");
             
             // If already connected, suggest reconnection
             if (visaSession != null)
@@ -170,7 +170,7 @@ class Program
         
         AnsiConsole.WriteLine();
         AnsiConsole.Status()
-            .Start($"Connecting to [yellow]{deviceAddress}[/]...", ctx =>
+            .Start($"Connecting to [yellow]{Markup.Escape(deviceAddress)}[/]...", ctx =>
             {
                 try
                 {
@@ -188,15 +188,20 @@ class Program
                     
                     AnsiConsole.WriteLine();
                     AnsiConsole.MarkupLine("[green]✓ Successfully connected![/]");
-                    AnsiConsole.MarkupLine($"[bold]Device:[/] [cyan]{idn}[/]");
+                    AnsiConsole.MarkupLine($"[bold]Device:[/] [cyan]{Markup.Escape(idn)}[/]");
                 }
                 catch (Exception ex)
                 {
-                    visaSession = null;
+                    // Dispose any resources that were allocated
+                    if (visaSession != null)
+                    {
+                        visaSession.Dispose();
+                        visaSession = null;
+                    }
                     resourceManager?.Dispose();
                     resourceManager = null;
                     AnsiConsole.WriteLine();
-                    AnsiConsole.MarkupLine($"[red]✗ Connection failed:[/] {ex.Message}");
+                    AnsiConsole.MarkupLine($"[red]✗ Connection failed:[/] {Markup.Escape(ex.Message)}");
                     AnsiConsole.MarkupLine("[yellow]Note:[/] Make sure the device is powered on and the address is correct.");
                     AnsiConsole.MarkupLine("[yellow]Note:[/] NI-VISA runtime must be installed on your system.");
                 }
@@ -221,7 +226,7 @@ class Program
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[red]✗ Error during disconnect:[/] {ex.Message}");
+            AnsiConsole.MarkupLine($"[red]✗ Error during disconnect:[/] {Markup.Escape(ex.Message)}");
         }
     }
 
@@ -235,7 +240,7 @@ class Program
         table.AddColumn(new TableColumn("[bold]Setting[/]").Centered());
         table.AddColumn(new TableColumn("[bold]Value[/]").Centered());
         
-        table.AddRow("Device Address", $"[yellow]{deviceAddress}[/]");
+        table.AddRow("Device Address", $"[yellow]{Markup.Escape(deviceAddress)}[/]");
         table.AddRow("Connection Status", visaSession != null ? "[green]Connected[/]" : "[red]Disconnected[/]");
         
         if (visaSession != null)
@@ -244,11 +249,11 @@ class Program
             {
                 visaSession.FormattedIO.WriteLine("*IDN?");
                 string idn = visaSession.FormattedIO.ReadLine();
-                table.AddRow("Device ID", $"[cyan]{idn}[/]");
+                table.AddRow("Device ID", $"[cyan]{Markup.Escape(idn)}[/]");
             }
             catch (Exception ex)
             {
-                table.AddRow("Device ID", $"[red]Error: {ex.Message}[/]");
+                table.AddRow("Device ID", $"[red]Error: {Markup.Escape(ex.Message)}[/]");
             }
         }
         

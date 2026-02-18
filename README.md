@@ -13,12 +13,26 @@ The Rigol DP832 is a triple-output programmable DC power supply featuring:
 
 ## Features
 
-This application provides:
-- ✨ **Beautiful Console Interface** - Powered by Spectre.Console
+This application currently provides:
+- ✨ **Beautiful Console Interface** - Powered by Spectre.Console with interactive menus
 - 🔌 **Flexible Connectivity** - Support for GPIB and TCPIP (LAN) connections
-- ⚙️ **Easy Configuration** - Simple device address setup
-- 📡 **SCPI Communication** - Direct communication with the power supply via NI-VISA
+- ⚙️ **Easy Configuration** - Simple device address setup with guided prompts
+- 📡 **Device Identification** - Query device information via *IDN? SCPI command
 - 🎯 **User-Friendly** - Interactive menu-driven interface
+
+### Current Capabilities
+- Configure and change VISA resource address (GPIB/TCPIP/Custom)
+- Connect to and disconnect from the power supply
+- Query device identification (*IDN?)
+- Display connection status and settings
+
+### Planned Features
+The following capabilities are planned for future releases:
+- General SCPI command sending interface
+- Channel voltage and current control
+- Output enable/disable controls
+- Real-time monitoring of voltage, current, and power readings
+- Logging and data capture
 
 ## Prerequisites
 
