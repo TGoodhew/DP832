@@ -1,5 +1,6 @@
 ﻿using Spectre.Console;
 using NationalInstruments.Visa;
+using System;
 
 namespace DP832PowerSupply
 {

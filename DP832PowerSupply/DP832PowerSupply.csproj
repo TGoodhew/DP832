@@ -7,21 +7,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Spectre.Console" Version="0.49.1" />
+    <PackageReference Include="Spectre.Console" Version="0.54.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- NI-VISA .NET Framework assemblies are installed with NI-VISA runtime -->
-    <!-- Download and install NI-VISA from: https://www.ni.com/en-us/support/downloads/drivers/download.ni-visa.html -->
-    <!-- These assemblies are typically located in the GAC or at: -->
-    <!-- C:\Program Files (x86)\IVI Foundation\VISA\VisaNS\ -->
-    <Reference Include="NationalInstruments.Common">
-      <HintPath>$(ProgramFiles(x86))\IVI Foundation\VISA\VisaNS\NationalInstruments.Common.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="Ivi.Visa">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\IVI Foundation\VISA\Microsoft.NET\Framework32\v4.0.30319\VISA.NET Shared Components 8.0.2\Ivi.Visa.dll</HintPath>
     </Reference>
-    <Reference Include="NationalInstruments.VisaNS">
-      <HintPath>$(ProgramFiles(x86))\IVI Foundation\VISA\VisaNS\NationalInstruments.VisaNS.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="NationalInstruments.Visa">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\IVI Foundation\VISA\Microsoft.NET\Framework32\v4.0.30319\NI VISA.NET 25.8\NationalInstruments.Visa.dll</HintPath>
     </Reference>
   </ItemGroup>
 
