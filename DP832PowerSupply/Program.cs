@@ -1,6 +1,7 @@
 ﻿using Spectre.Console;
 using NationalInstruments.Visa;
 using System;
+using System.Globalization;
 
 namespace DP832PowerSupply
 {
@@ -283,7 +284,7 @@ namespace DP832PowerSupply
     static bool ParseProtectionState(string stateStr)
     {
         string trimmedState = stateStr.Trim();
-        return (trimmedState == "ON" || trimmedState == "1");
+        return trimmedState.Equals("ON", StringComparison.OrdinalIgnoreCase) || trimmedState == "1";
     }
 
     static void ChannelControlsMenu()
@@ -402,7 +403,7 @@ namespace DP832PowerSupply
             // Query current voltage setting
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT?");
             string currentVoltStr = visaSession.FormattedIO.ReadLine();
-            double currentVolt = double.Parse(currentVoltStr);
+            double currentVolt = double.Parse(currentVoltStr, CultureInfo.InvariantCulture);
             
             AnsiConsole.MarkupLine($"[yellow]Current voltage setting:[/] {currentVolt:F3}V");
             AnsiConsole.WriteLine();
@@ -424,7 +425,7 @@ namespace DP832PowerSupply
             // Verify by reading back
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT?");
             string newVoltStr = visaSession.FormattedIO.ReadLine();
-            double newVolt = double.Parse(newVoltStr);
+            double newVolt = double.Parse(newVoltStr, CultureInfo.InvariantCulture);
             
             AnsiConsole.MarkupLine($"[green]✓[/] Voltage set to: [yellow]{newVolt:F3}V[/]");
         }
@@ -446,7 +447,7 @@ namespace DP832PowerSupply
             // Query current setting
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR?");
             string currentAmpStr = visaSession.FormattedIO.ReadLine();
-            double currentAmp = double.Parse(currentAmpStr);
+            double currentAmp = double.Parse(currentAmpStr, CultureInfo.InvariantCulture);
             
             AnsiConsole.MarkupLine($"[yellow]Current setting:[/] {currentAmp:F3}A");
             AnsiConsole.WriteLine();
@@ -468,7 +469,7 @@ namespace DP832PowerSupply
             // Verify by reading back
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR?");
             string newCurrentStr = visaSession.FormattedIO.ReadLine();
-            double newCurrent = double.Parse(newCurrentStr);
+            double newCurrent = double.Parse(newCurrentStr, CultureInfo.InvariantCulture);
             
             AnsiConsole.MarkupLine($"[green]✓[/] Current limit set to: [yellow]{newCurrent:F3}A[/]");
         }
@@ -489,7 +490,7 @@ namespace DP832PowerSupply
             // Query current OVP value
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT?");
             string currentOvpStr = visaSession.FormattedIO.ReadLine();
-            double currentOvp = double.Parse(currentOvpStr);
+            double currentOvp = double.Parse(currentOvpStr, CultureInfo.InvariantCulture);
             
             // Query current OVP state
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:STAT?");
@@ -544,7 +545,7 @@ namespace DP832PowerSupply
             // Query current OCP value
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT?");
             string currentOcpStr = visaSession.FormattedIO.ReadLine();
-            double currentOcp = double.Parse(currentOcpStr);
+            double currentOcp = double.Parse(currentOcpStr, CultureInfo.InvariantCulture);
             
             // Query current OCP state
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:STAT?");
@@ -606,29 +607,29 @@ namespace DP832PowerSupply
             // Query voltage settings and measurements
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT?");
             string voltSettingStr = visaSession.FormattedIO.ReadLine();
-            double voltSetting = double.Parse(voltSettingStr);
+            double voltSetting = double.Parse(voltSettingStr, CultureInfo.InvariantCulture);
 
             visaSession.FormattedIO.WriteLine($":MEAS:VOLT? CH{channelNum}");
             string voltMeasStr = visaSession.FormattedIO.ReadLine();
-            double voltMeas = double.Parse(voltMeasStr);
+            double voltMeas = double.Parse(voltMeasStr, CultureInfo.InvariantCulture);
 
             table.AddRow("Voltage", $"[yellow]{voltSetting:F3}V[/]", $"[cyan]{voltMeas:F3}V[/]");
 
             // Query current settings and measurements
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR?");
             string currSettingStr = visaSession.FormattedIO.ReadLine();
-            double currSetting = double.Parse(currSettingStr);
+            double currSetting = double.Parse(currSettingStr, CultureInfo.InvariantCulture);
 
             visaSession.FormattedIO.WriteLine($":MEAS:CURR? CH{channelNum}");
             string currMeasStr = visaSession.FormattedIO.ReadLine();
-            double currMeas = double.Parse(currMeasStr);
+            double currMeas = double.Parse(currMeasStr, CultureInfo.InvariantCulture);
 
             table.AddRow("Current", $"[yellow]{currSetting:F3}A[/]", $"[cyan]{currMeas:F3}A[/]");
 
             // Query power measurement
             visaSession.FormattedIO.WriteLine($":MEAS:POWEr? CH{channelNum}");
             string powerStr = visaSession.FormattedIO.ReadLine();
-            double power = double.Parse(powerStr);
+            double power = double.Parse(powerStr, CultureInfo.InvariantCulture);
 
             table.AddRow("Power", "-", $"[cyan]{power:F3}W[/]");
 
@@ -638,7 +639,7 @@ namespace DP832PowerSupply
             // Query OVP settings
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT?");
             string ovpLevelStr = visaSession.FormattedIO.ReadLine();
-            double ovpLevel = double.Parse(ovpLevelStr);
+            double ovpLevel = double.Parse(ovpLevelStr, CultureInfo.InvariantCulture);
 
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:STAT?");
             string ovpStateStr = visaSession.FormattedIO.ReadLine();
@@ -650,7 +651,7 @@ namespace DP832PowerSupply
             // Query OCP settings
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT?");
             string ocpLevelStr = visaSession.FormattedIO.ReadLine();
-            double ocpLevel = double.Parse(ocpLevelStr);
+            double ocpLevel = double.Parse(ocpLevelStr, CultureInfo.InvariantCulture);
 
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:STAT?");
             string ocpStateStr = visaSession.FormattedIO.ReadLine();
