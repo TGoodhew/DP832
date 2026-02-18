@@ -280,6 +280,11 @@ namespace DP832PowerSupply
         AnsiConsole.Write(table);
     }
 
+    static bool ParseProtectionState(string stateStr)
+    {
+        return (stateStr.Trim() == "ON" || stateStr.Trim() == "1");
+    }
+
     static void ChannelControlsMenu()
     {
         if (visaSession == null)
@@ -309,9 +314,16 @@ namespace DP832PowerSupply
             }
             else
             {
-                // Extract channel number
-                int channelNum = channelChoice.Contains("Channel 1") ? 1 :
-                                channelChoice.Contains("Channel 2") ? 2 : 3;
+                // Extract channel number more robustly
+                int channelNum;
+                if (channelChoice.Contains("Channel 1"))
+                    channelNum = 1;
+                else if (channelChoice.Contains("Channel 2"))
+                    channelNum = 2;
+                else if (channelChoice.Contains("Channel 3"))
+                    channelNum = 3;
+                else
+                    continue; // Skip invalid selections
                 
                 ChannelControlSubMenu(channelNum);
             }
@@ -480,8 +492,8 @@ namespace DP832PowerSupply
             
             // Query current OVP state
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:STAT?");
-            string stateStr = visaSession.FormattedIO.ReadLine().Trim();
-            bool ovpEnabled = (stateStr == "ON" || stateStr == "1");
+            string stateStr = visaSession.FormattedIO.ReadLine();
+            bool ovpEnabled = ParseProtectionState(stateStr);
             
             AnsiConsole.MarkupLine($"[yellow]Current OVP level:[/] {currentOvp:F3}V");
             AnsiConsole.MarkupLine($"[yellow]Current OVP state:[/] {(ovpEnabled ? "[green]Enabled[/]" : "[red]Disabled[/]")}");
@@ -534,8 +546,8 @@ namespace DP832PowerSupply
             
             // Query current OCP state
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:STAT?");
-            string stateStr = visaSession.FormattedIO.ReadLine().Trim();
-            bool ocpEnabled = (stateStr == "ON" || stateStr == "1");
+            string ocpStateStr = visaSession.FormattedIO.ReadLine();
+            bool ocpEnabled = ParseProtectionState(ocpStateStr);
             
             AnsiConsole.MarkupLine($"[yellow]Current OCP level:[/] {currentOcp:F3}A");
             AnsiConsole.MarkupLine($"[yellow]Current OCP state:[/] {(ocpEnabled ? "[green]Enabled[/]" : "[red]Disabled[/]")}");
@@ -626,8 +638,8 @@ namespace DP832PowerSupply
             double ovpLevel = double.Parse(ovpLevelStr);
 
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:STAT?");
-            string ovpStateStr = visaSession.FormattedIO.ReadLine().Trim();
-            bool ovpEnabled = (ovpStateStr == "ON" || ovpStateStr == "1");
+            string ovpStateStr = visaSession.FormattedIO.ReadLine();
+            bool ovpEnabled = ParseProtectionState(ovpStateStr);
 
             table.AddRow("OVP Level", $"[yellow]{ovpLevel:F3}V[/]", "-");
             table.AddRow("OVP State", ovpEnabled ? "[green]Enabled[/]" : "[red]Disabled[/]", "-");
@@ -638,8 +650,8 @@ namespace DP832PowerSupply
             double ocpLevel = double.Parse(ocpLevelStr);
 
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:STAT?");
-            string ocpStateStr = visaSession.FormattedIO.ReadLine().Trim();
-            bool ocpEnabled = (ocpStateStr == "ON" || ocpStateStr == "1");
+            string ocpStateStr2 = visaSession.FormattedIO.ReadLine();
+            bool ocpEnabled2 = ParseProtectionState(ocpStateStr2);
 
             table.AddRow("OCP Level", $"[yellow]{ocpLevel:F3}A[/]", "-");
             table.AddRow("OCP State", ocpEnabled ? "[green]Enabled[/]" : "[red]Disabled[/]", "-");
