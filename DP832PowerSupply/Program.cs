@@ -12,6 +12,7 @@ namespace DP832PowerSupply
 
     static void Main(string[] args)
     {
+        ShowFigletTitle();
         ShowTitle();
         ShowDescription();
         
@@ -46,6 +47,7 @@ namespace DP832PowerSupply
                 AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
                 Console.ReadKey(true);
                 Console.Clear();
+                ShowFigletTitle();
                 ShowTitle();
             }
         }
