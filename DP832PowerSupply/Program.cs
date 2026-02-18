@@ -650,11 +650,11 @@ namespace DP832PowerSupply
             double ocpLevel = double.Parse(ocpLevelStr);
 
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:STAT?");
-            string ocpStateStr2 = visaSession.FormattedIO.ReadLine();
-            bool ocpEnabled2 = ParseProtectionState(ocpStateStr2);
+            string ocpStateStr = visaSession.FormattedIO.ReadLine();
+            bool ocpEnabled = ParseProtectionState(ocpStateStr);
 
             table.AddRow("OCP Level", $"[yellow]{ocpLevel:F3}A[/]", "-");
-            table.AddRow("OCP State", ocpEnabled2 ? "[green]Enabled[/]" : "[red]Disabled[/]", "-");
+            table.AddRow("OCP State", ocpEnabled ? "[green]Enabled[/]" : "[red]Disabled[/]", "-");
 
             AnsiConsole.Write(table);
         }
