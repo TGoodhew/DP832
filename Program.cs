@@ -6,6 +6,7 @@ namespace DP832PowerSupply;
 class Program
 {
     private static string deviceAddress = "GPIB0::1::INSTR"; // Default GPIB address
+    private static ResourceManager? resourceManager;
     private static MessageBasedSession? visaSession;
 
     static void Main(string[] args)
@@ -176,24 +177,24 @@ class Program
                     ctx.Spinner(Spinner.Known.Dots);
                     ctx.SpinnerStyle(Style.Parse("green"));
                     
-                    using (var rmSession = new ResourceManager())
-                    {
-                        visaSession = (MessageBasedSession)rmSession.Open(deviceAddress);
-                        visaSession.TimeoutMilliseconds = 5000;
-                        
-                        // Try to query device identification
-                        ctx.Status("Querying device identification...");
-                        visaSession.FormattedIO.WriteLine("*IDN?");
-                        string idn = visaSession.FormattedIO.ReadLine();
-                        
-                        AnsiConsole.WriteLine();
-                        AnsiConsole.MarkupLine("[green]✓ Successfully connected![/]");
-                        AnsiConsole.MarkupLine($"[bold]Device:[/] [cyan]{idn}[/]");
-                    }
+                    resourceManager = new ResourceManager();
+                    visaSession = (MessageBasedSession)resourceManager.Open(deviceAddress);
+                    visaSession.TimeoutMilliseconds = 5000;
+                    
+                    // Try to query device identification
+                    ctx.Status("Querying device identification...");
+                    visaSession.FormattedIO.WriteLine("*IDN?");
+                    string idn = visaSession.FormattedIO.ReadLine();
+                    
+                    AnsiConsole.WriteLine();
+                    AnsiConsole.MarkupLine("[green]✓ Successfully connected![/]");
+                    AnsiConsole.MarkupLine($"[bold]Device:[/] [cyan]{idn}[/]");
                 }
                 catch (Exception ex)
                 {
                     visaSession = null;
+                    resourceManager?.Dispose();
+                    resourceManager = null;
                     AnsiConsole.WriteLine();
                     AnsiConsole.MarkupLine($"[red]✗ Connection failed:[/] {ex.Message}");
                     AnsiConsole.MarkupLine("[yellow]Note:[/] Make sure the device is powered on and the address is correct.");
@@ -214,6 +215,8 @@ class Program
         {
             visaSession.Dispose();
             visaSession = null;
+            resourceManager?.Dispose();
+            resourceManager = null;
             AnsiConsole.MarkupLine("[green]✓[/] Disconnected from device.");
         }
         catch (Exception ex)
