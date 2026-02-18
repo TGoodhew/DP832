@@ -37,7 +37,8 @@ The following capabilities are planned for future releases:
 ## Prerequisites
 
 ### Required Software
-- [.NET 10.0 SDK](https://dotnet.microsoft.com/download) or later
+- [.NET Framework 4.7.2 Developer Pack](https://dotnet.microsoft.com/download/dotnet-framework/net472) or later
+- [Visual Studio 2017](https://visualstudio.microsoft.com/) or later (or MSBuild/dotnet CLI)
 - [NI-VISA Runtime](https://www.ni.com/en-us/support/downloads/drivers/download.ni-visa.html) - Required for GPIB/TCPIP communication
 
 ### Hardware
@@ -55,22 +56,35 @@ The following capabilities are planned for future releases:
    cd DP832
    ```
 
-2. Restore dependencies:
+2. Open the solution in Visual Studio:
    ```bash
-   dotnet restore
+   # Open in Visual Studio
+   DP832.sln
    ```
 
-3. Build the application:
+3. Build the solution:
+   - In Visual Studio: Press Ctrl+Shift+B
+   - Or using command line:
    ```bash
-   dotnet build
+   dotnet build DP832.sln
    ```
 
 ## Usage
 
 ### Running the Application
 
+From Visual Studio:
+- Press F5 to run with debugging
+- Or Ctrl+F5 to run without debugging
+
+From command line:
 ```bash
-dotnet run
+DP832PowerSupply\bin\Debug\net472\DP832PowerSupply.exe
+```
+
+Or using dotnet CLI:
+```bash
+dotnet run --project DP832PowerSupply
 ```
 
 ### Configuring Device Address
@@ -139,16 +153,31 @@ Where `<CH>` can be CH1, CH2, or CH3 for the three channels.
 
 ```
 DP832/
-├── Program.cs                 # Main application code
-├── DP832PowerSupply.csproj   # Project file
-├── README.md                  # This file
-└── LICENSE                    # License information
+├── DP832.sln                      # Visual Studio solution file
+├── DP832PowerSupply/              # Console application project
+│   ├── Program.cs                 # Main application code
+│   ├── DP832PowerSupply.csproj   # Project file (.NET Framework 4.7.2, C# 7.3)
+│   └── README.md                  # Project-specific documentation
+├── README.md                      # This file
+├── LICENSE                        # License information
+└── DP832.pdf                      # Device manual
 ```
 
 ## Dependencies
 
-- **Spectre.Console** (v0.54.0) - Rich console UI framework
-- **NationalInstruments.Visa** (v25.5.0.13) - NI-VISA .NET library for instrument communication
+- **Spectre.Console** (v0.49.1) - Rich console UI framework (compatible with .NET Framework 4.7.2)
+- **NI-VISA .NET Framework Libraries** - NI-VISA runtime assemblies for instrument communication
+  - NationalInstruments.Common.dll
+  - NationalInstruments.VisaNS.dll
+  - Installed via NI-VISA Runtime (not available as NuGet package for .NET Framework 4.7.2)
+
+## Technical Details
+
+- **Target Framework:** .NET Framework 4.7.2
+- **C# Version:** 7.3
+- **Build System:** Visual Studio solution with MSBuild
+- **UI Framework:** Spectre.Console for rich terminal interfaces
+- **Instrument Control:** NI-VISA for GPIB/TCPIP/USB communication
 
 ## Troubleshooting
 
