@@ -73,7 +73,7 @@ class Program
             "[dim]Powered by NI-VISA and Spectre.Console[/]"
         )
         {
-            Header = new PanelHeader("[ About ]", Justify.Center),
+            Header = new PanelHeader("About", Justify.Center),
             Border = BoxBorder.Rounded,
             BorderStyle = new Style(Color.Cyan1)
         };
