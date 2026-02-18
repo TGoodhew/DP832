@@ -503,6 +503,7 @@ namespace DP832PowerSupply
             // Ask if user wants to change OVP level
             if (AnsiConsole.Confirm($"Change OVP level? (Current: {currentOvp:F3}V)", false))
             {
+                // OVP can be set slightly above max voltage to provide protection margin
                 var ovpLevel = AnsiConsole.Prompt(
                     new TextPrompt<double>($"Enter [green]OVP level[/] (0.01 to {maxVoltage + 1}V):")
                         .DefaultValue(currentOvp)
@@ -557,6 +558,7 @@ namespace DP832PowerSupply
             // Ask if user wants to change OCP level
             if (AnsiConsole.Confirm($"Change OCP level? (Current: {currentOcp:F3}A)", false))
             {
+                // OCP can be set slightly above max current to provide protection margin
                 var ocpLevel = AnsiConsole.Prompt(
                     new TextPrompt<double>($"Enter [green]OCP level[/] (0.001 to {maxCurrent + 1}A):")
                         .DefaultValue(currentOcp)
