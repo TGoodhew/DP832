@@ -491,7 +491,7 @@ namespace DP832PowerSupply
             if (AnsiConsole.Confirm($"Change OVP level? (Current: {currentOvp:F3}V)", false))
             {
                 var ovpLevel = AnsiConsole.Prompt(
-                    new TextPrompt<double>($"Enter [green]OVP level[/] (0.01 to {maxVoltage + 0.1}V):")
+                    new TextPrompt<double>($"Enter [green]OVP level[/] (0.01 to {maxVoltage + 1}V):")
                         .DefaultValue(currentOvp)
                         .ValidationErrorMessage($"[red]Please enter a valid OVP level[/]")
                         .Validate(v =>
@@ -545,7 +545,7 @@ namespace DP832PowerSupply
             if (AnsiConsole.Confirm($"Change OCP level? (Current: {currentOcp:F3}A)", false))
             {
                 var ocpLevel = AnsiConsole.Prompt(
-                    new TextPrompt<double>($"Enter [green]OCP level[/] (0.001 to {maxCurrent + 0.1}A):")
+                    new TextPrompt<double>($"Enter [green]OCP level[/] (0.001 to {maxCurrent + 1}A):")
                         .DefaultValue(currentOcp)
                         .ValidationErrorMessage($"[red]Please enter a valid OCP level[/]")
                         .Validate(c =>
