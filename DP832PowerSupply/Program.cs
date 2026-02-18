@@ -284,84 +284,155 @@ namespace DP832PowerSupply
         if (visaSession != null)
         {
             AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[bold cyan]Channel Status:[/]");
             
-            for (int channelNum = 1; channelNum <= 3; channelNum++)
+            // Create a single horizontal table with all channels
+            var channelTable = new Table();
+            channelTable.Border(TableBorder.Rounded);
+            channelTable.BorderStyle(new Style(Color.Cyan1));
+            channelTable.AddColumn(new TableColumn("[bold]Parameter[/]").LeftAligned());
+            channelTable.AddColumn(new TableColumn("[bold cyan]CH1[/]").Centered());
+            channelTable.AddColumn(new TableColumn("[bold cyan]CH2[/]").Centered());
+            channelTable.AddColumn(new TableColumn("[bold cyan]CH3[/]").Centered());
+            
+            try
             {
-                AnsiConsole.MarkupLine($"[bold cyan]Channel {channelNum} (CH{channelNum}) Status:[/]");
+                // Arrays to store data for all channels
+                double[] voltSettings = new double[3];
+                double[] voltMeasured = new double[3];
+                double[] currSettings = new double[3];
+                double[] currMeasured = new double[3];
+                double[] power = new double[3];
+                double[] ovpLevels = new double[3];
+                bool[] ovpEnabled = new bool[3];
+                double[] ocpLevels = new double[3];
+                bool[] ocpEnabled = new bool[3];
+                bool[] channelErrors = new bool[3];
                 
-                try
+                // Query all channels
+                for (int i = 0; i < 3; i++)
                 {
-                    var channelTable = new Table();
-                    channelTable.Border(TableBorder.Rounded);
-                    channelTable.BorderStyle(new Style(Color.Cyan1));
-                    channelTable.AddColumn(new TableColumn("[bold]Parameter[/]").Centered());
-                    channelTable.AddColumn(new TableColumn("[bold]Setting[/]").Centered());
-                    channelTable.AddColumn(new TableColumn("[bold]Measured[/]").Centered());
-                    
-                    // Query voltage settings and measurements
-                    visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT?");
-                    string voltSettingStr = visaSession.FormattedIO.ReadLine();
-                    double voltSetting = double.Parse(voltSettingStr, CultureInfo.InvariantCulture);
-                    
-                    visaSession.FormattedIO.WriteLine($":MEAS:VOLT? CH{channelNum}");
-                    string voltMeasStr = visaSession.FormattedIO.ReadLine();
-                    double voltMeas = double.Parse(voltMeasStr, CultureInfo.InvariantCulture);
-                    
-                    channelTable.AddRow("Voltage", $"[yellow]{voltSetting:F3}V[/]", $"[cyan]{voltMeas:F3}V[/]");
-                    
-                    // Query current settings and measurements
-                    visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR?");
-                    string currSettingStr = visaSession.FormattedIO.ReadLine();
-                    double currSetting = double.Parse(currSettingStr, CultureInfo.InvariantCulture);
-                    
-                    visaSession.FormattedIO.WriteLine($":MEAS:CURR? CH{channelNum}");
-                    string currMeasStr = visaSession.FormattedIO.ReadLine();
-                    double currMeas = double.Parse(currMeasStr, CultureInfo.InvariantCulture);
-                    
-                    channelTable.AddRow("Current", $"[yellow]{currSetting:F3}A[/]", $"[cyan]{currMeas:F3}A[/]");
-                    
-                    // Query power measurement
-                    visaSession.FormattedIO.WriteLine($":MEAS:POWEr? CH{channelNum}");
-                    string powerStr = visaSession.FormattedIO.ReadLine();
-                    double power = double.Parse(powerStr, CultureInfo.InvariantCulture);
-                    
-                    channelTable.AddRow("Power", "-", $"[cyan]{power:F3}W[/]");
-                    
-                    // Add separator
-                    channelTable.AddEmptyRow();
-                    
-                    // Query OVP settings
-                    visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT?");
-                    string ovpLevelStr = visaSession.FormattedIO.ReadLine();
-                    double ovpLevel = double.Parse(ovpLevelStr, CultureInfo.InvariantCulture);
-                    
-                    visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:STAT?");
-                    string ovpStateStr = visaSession.FormattedIO.ReadLine();
-                    bool ovpEnabled = ParseProtectionState(ovpStateStr);
-                    
-                    channelTable.AddRow("OVP Level", $"[yellow]{ovpLevel:F3}V[/]", "-");
-                    channelTable.AddRow("OVP State", ovpEnabled ? "[green]Enabled[/]" : "[red]Disabled[/]", "-");
-                    
-                    // Query OCP settings
-                    visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT?");
-                    string ocpLevelStr = visaSession.FormattedIO.ReadLine();
-                    double ocpLevel = double.Parse(ocpLevelStr, CultureInfo.InvariantCulture);
-                    
-                    visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:STAT?");
-                    string ocpStateStr = visaSession.FormattedIO.ReadLine();
-                    bool ocpEnabled = ParseProtectionState(ocpStateStr);
-                    
-                    channelTable.AddRow("OCP Level", $"[yellow]{ocpLevel:F3}A[/]", "-");
-                    channelTable.AddRow("OCP State", ocpEnabled ? "[green]Enabled[/]" : "[red]Disabled[/]", "-");
-                    
-                    AnsiConsole.Write(channelTable);
-                }
-                catch (Exception ex)
-                {
-                    AnsiConsole.MarkupLine($"[red]✗ Error reading CH{channelNum} status:[/] {Markup.Escape(ex.Message)}");
+                    int channelNum = i + 1;
+                    try
+                    {
+                        // Query voltage settings and measurements
+                        visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT?");
+                        string voltSettingStr = visaSession.FormattedIO.ReadLine();
+                        voltSettings[i] = double.Parse(voltSettingStr, CultureInfo.InvariantCulture);
+                        
+                        visaSession.FormattedIO.WriteLine($":MEAS:VOLT? CH{channelNum}");
+                        string voltMeasStr = visaSession.FormattedIO.ReadLine();
+                        voltMeasured[i] = double.Parse(voltMeasStr, CultureInfo.InvariantCulture);
+                        
+                        // Query current settings and measurements
+                        visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR?");
+                        string currSettingStr = visaSession.FormattedIO.ReadLine();
+                        currSettings[i] = double.Parse(currSettingStr, CultureInfo.InvariantCulture);
+                        
+                        visaSession.FormattedIO.WriteLine($":MEAS:CURR? CH{channelNum}");
+                        string currMeasStr = visaSession.FormattedIO.ReadLine();
+                        currMeasured[i] = double.Parse(currMeasStr, CultureInfo.InvariantCulture);
+                        
+                        // Query power measurement
+                        visaSession.FormattedIO.WriteLine($":MEAS:POWEr? CH{channelNum}");
+                        string powerStr = visaSession.FormattedIO.ReadLine();
+                        power[i] = double.Parse(powerStr, CultureInfo.InvariantCulture);
+                        
+                        // Query OVP settings
+                        visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT?");
+                        string ovpLevelStr = visaSession.FormattedIO.ReadLine();
+                        ovpLevels[i] = double.Parse(ovpLevelStr, CultureInfo.InvariantCulture);
+                        
+                        visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:STAT?");
+                        string ovpStateStr = visaSession.FormattedIO.ReadLine();
+                        ovpEnabled[i] = ParseProtectionState(ovpStateStr);
+                        
+                        // Query OCP settings
+                        visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT?");
+                        string ocpLevelStr = visaSession.FormattedIO.ReadLine();
+                        ocpLevels[i] = double.Parse(ocpLevelStr, CultureInfo.InvariantCulture);
+                        
+                        visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:STAT?");
+                        string ocpStateStr = visaSession.FormattedIO.ReadLine();
+                        ocpEnabled[i] = ParseProtectionState(ocpStateStr);
+                    }
+                    catch
+                    {
+                        channelErrors[i] = true;
+                    }
                 }
                 
-                AnsiConsole.WriteLine();
+                // Build the table rows
+                channelTable.AddRow(
+                    "Voltage (Set)",
+                    channelErrors[0] ? "[red]Error[/]" : $"[yellow]{voltSettings[0]:F3}V[/]",
+                    channelErrors[1] ? "[red]Error[/]" : $"[yellow]{voltSettings[1]:F3}V[/]",
+                    channelErrors[2] ? "[red]Error[/]" : $"[yellow]{voltSettings[2]:F3}V[/]"
+                );
+                
+                channelTable.AddRow(
+                    "Voltage (Meas)",
+                    channelErrors[0] ? "[red]Error[/]" : $"[cyan]{voltMeasured[0]:F3}V[/]",
+                    channelErrors[1] ? "[red]Error[/]" : $"[cyan]{voltMeasured[1]:F3}V[/]",
+                    channelErrors[2] ? "[red]Error[/]" : $"[cyan]{voltMeasured[2]:F3}V[/]"
+                );
+                
+                channelTable.AddRow(
+                    "Current (Set)",
+                    channelErrors[0] ? "[red]Error[/]" : $"[yellow]{currSettings[0]:F3}A[/]",
+                    channelErrors[1] ? "[red]Error[/]" : $"[yellow]{currSettings[1]:F3}A[/]",
+                    channelErrors[2] ? "[red]Error[/]" : $"[yellow]{currSettings[2]:F3}A[/]"
+                );
+                
+                channelTable.AddRow(
+                    "Current (Meas)",
+                    channelErrors[0] ? "[red]Error[/]" : $"[cyan]{currMeasured[0]:F3}A[/]",
+                    channelErrors[1] ? "[red]Error[/]" : $"[cyan]{currMeasured[1]:F3}A[/]",
+                    channelErrors[2] ? "[red]Error[/]" : $"[cyan]{currMeasured[2]:F3}A[/]"
+                );
+                
+                channelTable.AddRow(
+                    "Power (Meas)",
+                    channelErrors[0] ? "[red]Error[/]" : $"[cyan]{power[0]:F3}W[/]",
+                    channelErrors[1] ? "[red]Error[/]" : $"[cyan]{power[1]:F3}W[/]",
+                    channelErrors[2] ? "[red]Error[/]" : $"[cyan]{power[2]:F3}W[/]"
+                );
+                
+                channelTable.AddEmptyRow();
+                
+                channelTable.AddRow(
+                    "OVP Level",
+                    channelErrors[0] ? "[red]Error[/]" : $"[yellow]{ovpLevels[0]:F3}V[/]",
+                    channelErrors[1] ? "[red]Error[/]" : $"[yellow]{ovpLevels[1]:F3}V[/]",
+                    channelErrors[2] ? "[red]Error[/]" : $"[yellow]{ovpLevels[2]:F3}V[/]"
+                );
+                
+                channelTable.AddRow(
+                    "OVP State",
+                    channelErrors[0] ? "[red]Error[/]" : (ovpEnabled[0] ? "[green]Enabled[/]" : "[red]Disabled[/]"),
+                    channelErrors[1] ? "[red]Error[/]" : (ovpEnabled[1] ? "[green]Enabled[/]" : "[red]Disabled[/]"),
+                    channelErrors[2] ? "[red]Error[/]" : (ovpEnabled[2] ? "[green]Enabled[/]" : "[red]Disabled[/]")
+                );
+                
+                channelTable.AddRow(
+                    "OCP Level",
+                    channelErrors[0] ? "[red]Error[/]" : $"[yellow]{ocpLevels[0]:F3}A[/]",
+                    channelErrors[1] ? "[red]Error[/]" : $"[yellow]{ocpLevels[1]:F3}A[/]",
+                    channelErrors[2] ? "[red]Error[/]" : $"[yellow]{ocpLevels[2]:F3}A[/]"
+                );
+                
+                channelTable.AddRow(
+                    "OCP State",
+                    channelErrors[0] ? "[red]Error[/]" : (ocpEnabled[0] ? "[green]Enabled[/]" : "[red]Disabled[/]"),
+                    channelErrors[1] ? "[red]Error[/]" : (ocpEnabled[1] ? "[green]Enabled[/]" : "[red]Disabled[/]"),
+                    channelErrors[2] ? "[red]Error[/]" : (ocpEnabled[2] ? "[green]Enabled[/]" : "[red]Disabled[/]")
+                );
+                
+                AnsiConsole.Write(channelTable);
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]✗ Error reading channel status:[/] {Markup.Escape(ex.Message)}");
             }
         }
     }
