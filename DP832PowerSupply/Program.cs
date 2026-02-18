@@ -282,7 +282,8 @@ namespace DP832PowerSupply
 
     static bool ParseProtectionState(string stateStr)
     {
-        return (stateStr.Trim() == "ON" || stateStr.Trim() == "1");
+        string trimmedState = stateStr.Trim();
+        return (trimmedState == "ON" || trimmedState == "1");
     }
 
     static void ChannelControlsMenu()
@@ -623,7 +624,7 @@ namespace DP832PowerSupply
             table.AddRow("Current", $"[yellow]{currSetting:F3}A[/]", $"[cyan]{currMeas:F3}A[/]");
 
             // Query power measurement
-            visaSession.FormattedIO.WriteLine($":MEAS:POWE? CH{channelNum}");
+            visaSession.FormattedIO.WriteLine($":MEAS:POWEr? CH{channelNum}");
             string powerStr = visaSession.FormattedIO.ReadLine();
             double power = double.Parse(powerStr);
 
