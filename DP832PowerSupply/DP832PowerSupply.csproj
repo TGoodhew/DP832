@@ -16,11 +16,11 @@
     <!-- These assemblies are typically located in the GAC or at: -->
     <!-- C:\Program Files (x86)\IVI Foundation\VISA\VisaNS\ -->
     <Reference Include="NationalInstruments.Common">
-      <HintPath>$(ProgramFiles)\IVI Foundation\VISA\VisaNS\NationalInstruments.Common.dll</HintPath>
+      <HintPath>$(ProgramFiles(x86))\IVI Foundation\VISA\VisaNS\NationalInstruments.Common.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="NationalInstruments.VisaNS">
-      <HintPath>$(ProgramFiles)\IVI Foundation\VISA\VisaNS\NationalInstruments.VisaNS.dll</HintPath>
+      <HintPath>$(ProgramFiles(x86))\IVI Foundation\VISA\VisaNS\NationalInstruments.VisaNS.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
