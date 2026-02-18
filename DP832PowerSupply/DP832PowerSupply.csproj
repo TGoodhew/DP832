@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console" Version="0.49.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- NI-VISA .NET Framework assemblies are installed with NI-VISA runtime -->
+    <!-- Download and install NI-VISA from: https://www.ni.com/en-us/support/downloads/drivers/download.ni-visa.html -->
+    <!-- These assemblies are typically located in the GAC or at: -->
+    <!-- C:\Program Files (x86)\IVI Foundation\VISA\VisaNS\ -->
+    <Reference Include="NationalInstruments.Common">
+      <HintPath>$(ProgramFiles(x86))\IVI Foundation\VISA\VisaNS\NationalInstruments.Common.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="NationalInstruments.VisaNS">
+      <HintPath>$(ProgramFiles(x86))\IVI Foundation\VISA\VisaNS\NationalInstruments.VisaNS.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

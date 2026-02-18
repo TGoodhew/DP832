@@ -1,13 +1,13 @@
 ﻿using Spectre.Console;
 using NationalInstruments.Visa;
 
-namespace DP832PowerSupply;
-
-class Program
+namespace DP832PowerSupply
 {
-    private static string deviceAddress = "GPIB0::1::INSTR"; // Default GPIB address
-    private static ResourceManager? resourceManager;
-    private static MessageBasedSession? visaSession;
+    class Program
+    {
+        private static string deviceAddress = "GPIB0::1::INSTR"; // Default GPIB address
+        private static ResourceManager resourceManager;
+        private static MessageBasedSession visaSession;
 
     static void Main(string[] args)
     {
@@ -259,4 +259,5 @@ class Program
         
         AnsiConsole.Write(table);
     }
+}
 }
