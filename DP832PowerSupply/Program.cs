@@ -12,7 +12,6 @@ namespace DP832PowerSupply
 
     static void Main(string[] args)
     {
-        ShowFigletTitle();
         ShowTitle();
         ShowDescription();
         
@@ -47,7 +46,6 @@ namespace DP832PowerSupply
                 AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
                 Console.ReadKey(true);
                 Console.Clear();
-                ShowFigletTitle();
                 ShowTitle();
             }
         }
@@ -56,21 +54,20 @@ namespace DP832PowerSupply
     }
 
     /// <summary>
-    /// Displays the DP832 model number as a centered figlet ASCII art title.
+    /// Displays the DP832 title with figlet ASCII art and rule-based subtitle.
     /// This method can be called independently throughout the program to show the title.
     /// </summary>
-    static void ShowFigletTitle()
+    static void ShowTitle()
     {
+        // Display figlet ASCII art title
         var figlet = new FigletText("DP832")
             .Centered()
             .Color(Color.Blue);
         
         AnsiConsole.Write(figlet);
         AnsiConsole.WriteLine();
-    }
-
-    static void ShowTitle()
-    {
+        
+        // Display rule-based subtitle
         var rule = new Rule("[bold blue]DP832 Power Supply Controller[/]");
         rule.Style = Style.Parse("blue");
         AnsiConsole.Write(rule);
