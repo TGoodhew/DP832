@@ -53,6 +53,10 @@ namespace DP832PowerSupply
         AnsiConsole.MarkupLine("[green]Thank you for using DP832 Power Supply Controller![/]");
     }
 
+    /// <summary>
+    /// Displays the DP832 model number as a centered figlet ASCII art title.
+    /// This method can be called independently throughout the program to show the title.
+    /// </summary>
     static void ShowFigletTitle()
     {
         var figlet = new FigletText("DP832")
