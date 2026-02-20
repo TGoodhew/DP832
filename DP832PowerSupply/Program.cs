@@ -45,6 +45,9 @@ namespace DP832PowerSupply
                     AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
                     Console.ReadKey(true);
                     break;
+                case "Save/Load State":
+                    SaveLoadStateMenu();
+                    break;
                 case "Reset Device":
                     ResetDevice();
                     break;
@@ -225,6 +228,7 @@ namespace DP832PowerSupply
                 "Channel Controls",
                 "Advanced Options",
                 "Show Current Settings",
+                "Save/Load State",
                 "Reset Device",
                 "Exit"
             });
@@ -1498,6 +1502,373 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring screen saver:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
+        }
+    }
+
+    static void SaveLoadStateMenu()
+    {
+        if (visaSession == null)
+        {
+            AnsiConsole.MarkupLine("[red]✗[/] Not connected to device. Please connect first.");
+            PauseOnError();
+            return;
+        }
+
+        bool exitMenu = false;
+        while (!exitMenu)
+        {
+            AnsiConsole.WriteLine();
+            var choice = ShowMenuWithEsc(
+                "[bold cyan]Save/Load State[/]",
+                new[] {
+                    "Save State to Local File",
+                    "Load State from Local File",
+                    "Save State to Device Memory",
+                    "Load State from Device Memory",
+                    "Back to Main Menu"
+                });
+
+            switch (choice)
+            {
+                case null:
+                case "Back to Main Menu":
+                    exitMenu = true;
+                    break;
+                case "Save State to Local File":
+                    SaveStateToFile();
+                    break;
+                case "Load State from Local File":
+                    LoadStateFromFile();
+                    break;
+                case "Save State to Device Memory":
+                    SaveStateToDevice();
+                    break;
+                case "Load State from Device Memory":
+                    LoadStateFromDevice();
+                    break;
+            }
+
+            if (!exitMenu)
+            {
+                AnsiConsole.WriteLine();
+            }
+        }
+    }
+
+    static void SaveStateToFile()
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[bold cyan]Save State to Local File[/]");
+        AnsiConsole.WriteLine();
+
+        try
+        {
+            string defaultPath = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "dp832_state.txt");
+
+            string filePath = AnsiConsole.Prompt(
+                new TextPrompt<string>("Enter [green]file path[/] to save state:")
+                    .DefaultValue(defaultPath));
+
+            var lines = new System.Collections.Generic.List<string>();
+            lines.Add("# DP832 State File");
+            lines.Add($"# Saved: {DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)}");
+            lines.Add($"# Device: {deviceAddress}");
+            lines.Add("");
+
+            for (int ch = 1; ch <= 3; ch++)
+            {
+                try
+                {
+                    visaSession.FormattedIO.WriteLine($":SOUR{ch}:VOLT?");
+                    lines.Add($"CH{ch}.Voltage={visaSession.FormattedIO.ReadLine().Trim()}");
+
+                    visaSession.FormattedIO.WriteLine($":SOUR{ch}:CURR?");
+                    lines.Add($"CH{ch}.Current={visaSession.FormattedIO.ReadLine().Trim()}");
+
+                    visaSession.FormattedIO.WriteLine($":SOUR{ch}:VOLT:PROT?");
+                    lines.Add($"CH{ch}.OVPLevel={visaSession.FormattedIO.ReadLine().Trim()}");
+
+                    visaSession.FormattedIO.WriteLine($":SOUR{ch}:VOLT:PROT:STAT?");
+                    lines.Add($"CH{ch}.OVPEnabled={ParseProtectionState(visaSession.FormattedIO.ReadLine())}");
+
+                    visaSession.FormattedIO.WriteLine($":SOUR{ch}:CURR:PROT?");
+                    lines.Add($"CH{ch}.OCPLevel={visaSession.FormattedIO.ReadLine().Trim()}");
+
+                    visaSession.FormattedIO.WriteLine($":SOUR{ch}:CURR:PROT:STAT?");
+                    lines.Add($"CH{ch}.OCPEnabled={ParseProtectionState(visaSession.FormattedIO.ReadLine())}");
+
+                    visaSession.FormattedIO.WriteLine($":OUTPut? CH{ch}");
+                    lines.Add($"CH{ch}.OutputEnabled={ParseProtectionState(visaSession.FormattedIO.ReadLine())}");
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"[yellow]⚠[/] Error reading CH{ch} settings: {Markup.Escape(ex.Message)}");
+                }
+                lines.Add("");
+            }
+
+            try
+            {
+                visaSession.FormattedIO.WriteLine(":SYSTem:TRACKMode?");
+                lines.Add($"System.TrackMode={visaSession.FormattedIO.ReadLine().Trim()}");
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠[/] Could not read track mode: {Markup.Escape(ex.Message)}");
+            }
+
+            try
+            {
+                visaSession.FormattedIO.WriteLine(":OUTPut:TRACk? CH1");
+                lines.Add($"System.TrackCH1={ParseProtectionState(visaSession.FormattedIO.ReadLine())}");
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠[/] Could not read CH1 track state: {Markup.Escape(ex.Message)}");
+            }
+
+            try
+            {
+                visaSession.FormattedIO.WriteLine(":OUTPut:TRACk? CH2");
+                lines.Add($"System.TrackCH2={ParseProtectionState(visaSession.FormattedIO.ReadLine())}");
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠[/] Could not read CH2 track state: {Markup.Escape(ex.Message)}");
+            }
+
+            try
+            {
+                visaSession.FormattedIO.WriteLine(":SYSTem:OTP?");
+                lines.Add($"System.OTP={ParseProtectionState(visaSession.FormattedIO.ReadLine())}");
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠[/] Could not read OTP state: {Markup.Escape(ex.Message)}");
+            }
+
+            try
+            {
+                visaSession.FormattedIO.WriteLine(":SYSTem:BEEPer?");
+                lines.Add($"System.Beeper={ParseProtectionState(visaSession.FormattedIO.ReadLine())}");
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠[/] Could not read beeper state: {Markup.Escape(ex.Message)}");
+            }
+
+            try
+            {
+                visaSession.FormattedIO.WriteLine(":SYSTem:BRIGhtness?");
+                lines.Add($"System.Brightness={visaSession.FormattedIO.ReadLine().Trim()}");
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠[/] Could not read brightness: {Markup.Escape(ex.Message)}");
+            }
+
+            try
+            {
+                visaSession.FormattedIO.WriteLine(":SYSTem:SAVer?");
+                lines.Add($"System.ScreenSaver={ParseProtectionState(visaSession.FormattedIO.ReadLine())}");
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠[/] Could not read screen saver state: {Markup.Escape(ex.Message)}");
+            }
+
+            System.IO.File.WriteAllLines(filePath, lines);
+            AnsiConsole.MarkupLine($"[green]✓[/] State saved to: [yellow]{Markup.Escape(filePath)}[/]");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]✗ Error saving state:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
+        }
+    }
+
+    static void LoadStateFromFile()
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[bold cyan]Load State from Local File[/]");
+        AnsiConsole.WriteLine();
+
+        try
+        {
+            string defaultPath = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "dp832_state.txt");
+
+            string filePath = AnsiConsole.Prompt(
+                new TextPrompt<string>("Enter [green]file path[/] to load state from:")
+                    .DefaultValue(defaultPath));
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                AnsiConsole.MarkupLine($"[red]✗ File not found:[/] {Markup.Escape(filePath)}");
+                PauseOnError();
+                return;
+            }
+
+            var settings = new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string line in System.IO.File.ReadAllLines(filePath))
+            {
+                string trimmed = line.Trim();
+                if (trimmed.StartsWith("#", StringComparison.Ordinal) || !trimmed.Contains("="))
+                    continue;
+                int eqIdx = trimmed.IndexOf('=');
+                string key = trimmed.Substring(0, eqIdx).Trim();
+                string val = trimmed.Substring(eqIdx + 1).Trim();
+                settings[key] = val;
+            }
+
+            AnsiConsole.MarkupLine("[yellow]⚠ This will overwrite current device settings.[/]");
+            if (!AnsiConsole.Confirm("Apply loaded state to device?", false))
+            {
+                AnsiConsole.MarkupLine("[grey]Load cancelled.[/]");
+                return;
+            }
+
+            for (int ch = 1; ch <= 3; ch++)
+            {
+                try
+                {
+                    if (settings.TryGetValue($"CH{ch}.Voltage", out string voltageStr) &&
+                        double.TryParse(voltageStr, NumberStyles.Float, CultureInfo.InvariantCulture, out double voltage))
+                        SendCommandAndCheckErrors($":SOUR{ch}:VOLT {voltage.ToString("F3", CultureInfo.InvariantCulture)}");
+
+                    if (settings.TryGetValue($"CH{ch}.Current", out string currentStr) &&
+                        double.TryParse(currentStr, NumberStyles.Float, CultureInfo.InvariantCulture, out double current))
+                        SendCommandAndCheckErrors($":SOUR{ch}:CURR {current.ToString("F3", CultureInfo.InvariantCulture)}");
+
+                    if (settings.TryGetValue($"CH{ch}.OVPLevel", out string ovpLevelStr) &&
+                        double.TryParse(ovpLevelStr, NumberStyles.Float, CultureInfo.InvariantCulture, out double ovpLevel))
+                        SendCommandAndCheckErrors($":SOUR{ch}:VOLT:PROT {ovpLevel.ToString("F3", CultureInfo.InvariantCulture)}");
+
+                    if (settings.TryGetValue($"CH{ch}.OVPEnabled", out string ovpEnabledStr) &&
+                        bool.TryParse(ovpEnabledStr, out bool ovpEnabled))
+                        SendCommandAndCheckErrors($":SOUR{ch}:VOLT:PROT:STAT {(ovpEnabled ? "ON" : "OFF")}");
+
+                    if (settings.TryGetValue($"CH{ch}.OCPLevel", out string ocpLevelStr) &&
+                        double.TryParse(ocpLevelStr, NumberStyles.Float, CultureInfo.InvariantCulture, out double ocpLevel))
+                        SendCommandAndCheckErrors($":SOUR{ch}:CURR:PROT {ocpLevel.ToString("F3", CultureInfo.InvariantCulture)}");
+
+                    if (settings.TryGetValue($"CH{ch}.OCPEnabled", out string ocpEnabledStr) &&
+                        bool.TryParse(ocpEnabledStr, out bool ocpEnabled))
+                        SendCommandAndCheckErrors($":SOUR{ch}:CURR:PROT:STAT {(ocpEnabled ? "ON" : "OFF")}");
+
+                    if (settings.TryGetValue($"CH{ch}.OutputEnabled", out string outputEnabledStr) &&
+                        bool.TryParse(outputEnabledStr, out bool outputEnabled))
+                        SendCommandAndCheckErrors($":OUTPut CH{ch},{(outputEnabled ? "ON" : "OFF")}");
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"[yellow]⚠[/] Error applying CH{ch} settings: {Markup.Escape(ex.Message)}");
+                }
+            }
+
+            if (settings.TryGetValue("System.TrackMode", out string trackMode))
+                SendCommandAndCheckErrors($":SYSTem:TRACKMode {trackMode}");
+
+            if (settings.TryGetValue("System.TrackCH1", out string trackChannel1Str) &&
+                bool.TryParse(trackChannel1Str, out bool trackChannel1))
+                SendCommandAndCheckErrors($":OUTPut:TRACk CH1,{(trackChannel1 ? "ON" : "OFF")}");
+
+            if (settings.TryGetValue("System.TrackCH2", out string trackChannel2Str) &&
+                bool.TryParse(trackChannel2Str, out bool trackChannel2))
+                SendCommandAndCheckErrors($":OUTPut:TRACk CH2,{(trackChannel2 ? "ON" : "OFF")}");
+
+            if (settings.TryGetValue("System.OTP", out string otpStr) &&
+                bool.TryParse(otpStr, out bool otp))
+                SendCommandAndCheckErrors($":SYSTem:OTP {(otp ? "ON" : "OFF")}");
+
+            if (settings.TryGetValue("System.Beeper", out string beeperStr) &&
+                bool.TryParse(beeperStr, out bool beeper))
+                SendCommandAndCheckErrors($":SYSTem:BEEPer {(beeper ? "ON" : "OFF")}");
+
+            if (settings.TryGetValue("System.Brightness", out string brightnessStr) &&
+                int.TryParse(brightnessStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out int brightness))
+                SendCommandAndCheckErrors($":SYSTem:BRIGhtness {brightness}");
+
+            if (settings.TryGetValue("System.ScreenSaver", out string screenSaverStr) &&
+                bool.TryParse(screenSaverStr, out bool screenSaver))
+                SendCommandAndCheckErrors($":SYSTem:SAVer {(screenSaver ? "ON" : "OFF")}");
+
+            AnsiConsole.MarkupLine($"[green]✓[/] State loaded from: [yellow]{Markup.Escape(filePath)}[/]");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]✗ Error loading state:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
+        }
+    }
+
+    static void SaveStateToDevice()
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[bold cyan]Save State to Device Memory[/]");
+        AnsiConsole.MarkupLine("[grey]The DP832 supports 10 memory slots (1-10).[/]");
+        AnsiConsole.WriteLine();
+
+        try
+        {
+            var slot = AnsiConsole.Prompt(
+                new TextPrompt<int>("Enter memory [green]slot number[/] (1-10):")
+                    .DefaultValue(1)
+                    .ValidationErrorMessage("[red]Please enter a slot number between 1 and 10[/]")
+                    .Validate(v =>
+                    {
+                        if (v < 1 || v > 10)
+                            return ValidationResult.Error("[red]Slot must be between 1 and 10[/]");
+                        return ValidationResult.Success();
+                    }));
+
+            if (SendCommandAndCheckErrors($"*SAV {slot}"))
+                AnsiConsole.MarkupLine($"[green]✓[/] State saved to device memory slot [yellow]{slot}[/]");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]✗ Error saving state to device:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
+        }
+    }
+
+    static void LoadStateFromDevice()
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[bold cyan]Load State from Device Memory[/]");
+        AnsiConsole.MarkupLine("[grey]The DP832 supports 10 memory slots (1-10).[/]");
+        AnsiConsole.WriteLine();
+
+        try
+        {
+            var slot = AnsiConsole.Prompt(
+                new TextPrompt<int>("Enter memory [green]slot number[/] (1-10):")
+                    .DefaultValue(1)
+                    .ValidationErrorMessage("[red]Please enter a slot number between 1 and 10[/]")
+                    .Validate(v =>
+                    {
+                        if (v < 1 || v > 10)
+                            return ValidationResult.Error("[red]Slot must be between 1 and 10[/]");
+                        return ValidationResult.Success();
+                    }));
+
+            AnsiConsole.MarkupLine("[yellow]⚠ This will overwrite current device settings.[/]");
+            if (!AnsiConsole.Confirm($"Load state from device memory slot {slot}?", false))
+            {
+                AnsiConsole.MarkupLine("[grey]Load cancelled.[/]");
+                return;
+            }
+
+            if (SendCommandAndCheckErrors($"*RCL {slot}"))
+                AnsiConsole.MarkupLine($"[green]✓[/] State loaded from device memory slot [yellow]{slot}[/]");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]✗ Error loading state from device:[/] {Markup.Escape(ex.Message)}");
             PauseOnError();
         }
     }
