@@ -126,23 +126,19 @@ namespace DP832PowerSupply
         const int menuChromeHeight = 7;
         int pageSize = Math.Max(1, Console.WindowHeight - menuChromeHeight);
         int pageOffset = 0;
-        int menuStartRow = Console.CursorTop;
-        bool firstDraw = true;
+        int lastLinesDrawn = 0; // track lines drawn in previous render to erase them
 
         Console.CursorVisible = false;
         try
         {
             while (true)
             {
-                if (!firstDraw)
+                // Erase the previous render by moving cursor up exactly as many lines as were drawn
+                if (lastLinesDrawn > 0)
                 {
-                    Console.SetCursorPosition(0, menuStartRow);
-                    Console.Write(AnsiClearToEndOfScreen); // Clear from cursor to end of screen
+                    Console.Write($"\x1b[{lastLinesDrawn}A"); // cursor up
+                    Console.Write(AnsiClearToEndOfScreen);    // clear from cursor to end of screen
                 }
-                firstDraw = false;
-
-                AnsiConsole.MarkupLine(title);
-                AnsiConsole.WriteLine();
 
                 // Adjust page offset to keep selected item in view
                 if (selectedIndex < pageOffset)
@@ -153,6 +149,14 @@ namespace DP832PowerSupply
                 bool scrollable = choices.Length > pageSize;
                 int displayCount = Math.Min(pageSize, choices.Length - pageOffset);
 
+                // Count and draw every line so we know exactly how many to erase next time
+                int linesDrawn = 0;
+
+                AnsiConsole.MarkupLine(title);
+                linesDrawn++;
+                AnsiConsole.WriteLine();
+                linesDrawn++;
+
                 for (int i = pageOffset; i < pageOffset + displayCount; i++)
                 {
                     string escaped = Markup.Escape(choices[i]);
@@ -160,13 +164,21 @@ namespace DP832PowerSupply
                         AnsiConsole.MarkupLine($"[blue]>  {escaped}[/]");
                     else
                         AnsiConsole.MarkupLine($"   {escaped}");
+                    linesDrawn++;
                 }
 
                 if (scrollable)
+                {
                     AnsiConsole.MarkupLine("[grey](Move up and down to reveal more options)[/]");
+                    linesDrawn++;
+                }
 
                 AnsiConsole.WriteLine();
+                linesDrawn++;
                 AnsiConsole.MarkupLine("[grey](Use arrow keys to navigate, Enter to select, Esc to go back)[/]");
+                linesDrawn++;
+
+                lastLinesDrawn = linesDrawn;
 
                 ConsoleKeyInfo key = Console.ReadKey(true);
                 switch (key.Key)
