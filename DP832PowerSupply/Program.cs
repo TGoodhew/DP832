@@ -194,6 +194,7 @@ namespace DP832PowerSupply
         }
         
         AnsiConsole.WriteLine();
+        Exception connectionError = null;
         AnsiConsole.Status()
             .Start($"Connecting to [yellow]{Markup.Escape(deviceAddress)}[/]...", ctx =>
             {
@@ -225,13 +226,18 @@ namespace DP832PowerSupply
                     }
                     resourceManager?.Dispose();
                     resourceManager = null;
-                    AnsiConsole.WriteLine();
-                    AnsiConsole.MarkupLine($"[red]✗ Connection failed:[/] {Markup.Escape(ex.Message)}");
-                    AnsiConsole.MarkupLine("[yellow]Note:[/] Make sure the device is powered on and the address is correct.");
-                    AnsiConsole.MarkupLine("[yellow]Note:[/] NI-VISA runtime must be installed on your system.");
-                    PauseOnError();
+                    connectionError = ex;
                 }
             });
+
+        if (connectionError != null)
+        {
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine($"[red]✗ Connection failed:[/] {Markup.Escape(connectionError.Message)}");
+            AnsiConsole.MarkupLine("[yellow]Note:[/] Make sure the device is powered on and the address is correct.");
+            AnsiConsole.MarkupLine("[yellow]Note:[/] NI-VISA runtime must be installed on your system.");
+            PauseOnError();
+        }
     }
 
     static void DisconnectFromDevice()
