@@ -49,9 +49,6 @@ namespace DP832PowerSupply
             
             if (!exit)
             {
-                AnsiConsole.WriteLine();
-                AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
-                Console.ReadKey(true);
                 Console.Clear();
                 ShowTitle();
             }
@@ -709,8 +706,6 @@ namespace DP832PowerSupply
             if (!exitSubMenu)
             {
                 AnsiConsole.WriteLine();
-                AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
-                Console.ReadKey(true);
             }
         }
     }
@@ -1042,8 +1037,6 @@ namespace DP832PowerSupply
             if (!exitMenu)
             {
                 AnsiConsole.WriteLine();
-                AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
-                Console.ReadKey(true);
             }
         }
     }
@@ -1271,8 +1264,6 @@ namespace DP832PowerSupply
             if (!exitDisplay)
             {
                 AnsiConsole.WriteLine();
-                AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
-                Console.ReadKey(true);
             }
         }
     }
