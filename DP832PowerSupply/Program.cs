@@ -40,6 +40,9 @@ namespace DP832PowerSupply
                     break;
                 case "Show Current Settings":
                     ShowCurrentSettings();
+                    AnsiConsole.WriteLine();
+                    AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
+                    Console.ReadKey(true);
                     break;
                 case "Exit":
                     exit = true;
