@@ -116,7 +116,16 @@ namespace DP832PowerSupply
     /// </summary>
     static string ShowMenuWithEsc(string title, string[] choices)
     {
+        if (choices == null)
+            throw new ArgumentNullException(nameof(choices));
+        if (choices.Length == 0)
+            throw new ArgumentException("At least one choice must be provided.", nameof(choices));
+
         int selectedIndex = 0;
+        // Lines used by: title (1), blank (1), optional "more choices" hint (1), blank (1), ESC hint (1), plus margin (2)
+        const int menuChromeHeight = 7;
+        int pageSize = Math.Max(1, Console.WindowHeight - menuChromeHeight);
+        int pageOffset = 0;
         int menuStartRow = Console.CursorTop;
         bool firstDraw = true;
 
@@ -135,7 +144,16 @@ namespace DP832PowerSupply
                 AnsiConsole.MarkupLine(title);
                 AnsiConsole.WriteLine();
 
-                for (int i = 0; i < choices.Length; i++)
+                // Adjust page offset to keep selected item in view
+                if (selectedIndex < pageOffset)
+                    pageOffset = selectedIndex;
+                else if (selectedIndex >= pageOffset + pageSize)
+                    pageOffset = selectedIndex - pageSize + 1;
+
+                bool scrollable = choices.Length > pageSize;
+                int displayCount = Math.Min(pageSize, choices.Length - pageOffset);
+
+                for (int i = pageOffset; i < pageOffset + displayCount; i++)
                 {
                     string escaped = Markup.Escape(choices[i]);
                     if (i == selectedIndex)
@@ -143,6 +161,9 @@ namespace DP832PowerSupply
                     else
                         AnsiConsole.MarkupLine($"   {escaped}");
                 }
+
+                if (scrollable)
+                    AnsiConsole.MarkupLine("[grey](Move up and down to reveal more options)[/]");
 
                 AnsiConsole.WriteLine();
                 AnsiConsole.MarkupLine("[grey](Use arrow keys to navigate, Enter to select, Esc to go back)[/]");
@@ -183,21 +204,18 @@ namespace DP832PowerSupply
         AnsiConsole.MarkupLine($"[bold]Connection Status:[/] {connectionStatus}");
         AnsiConsole.WriteLine();
         
-        var selection = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title("[bold cyan]What would you like to do?[/]")
-                .PageSize(10)
-                .MoreChoicesText("[grey](Move up and down to reveal more options)[/]")
-                .AddChoices(new[] {
-                    "Configure Device Address",
-                    "Connect to Device",
-                    "Disconnect from Device",
-                    "Channel Controls",
-                    "Advanced Options",
-                    "Show Current Settings",
-                    "Reset Device",
-                    "Exit"
-                }));
+        var selection = ShowMenuWithEsc(
+            "[bold cyan]What would you like to do?[/]",
+            new[] {
+                "Configure Device Address",
+                "Connect to Device",
+                "Disconnect from Device",
+                "Channel Controls",
+                "Advanced Options",
+                "Show Current Settings",
+                "Reset Device",
+                "Exit"
+            });
         
         return selection ?? "Exit";
     }
