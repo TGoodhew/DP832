@@ -10,6 +10,7 @@ namespace DP832PowerSupply
         private static string deviceAddress = "GPIB0::1::INSTR"; // Default GPIB address
         private static ResourceManager resourceManager;
         private static MessageBasedSession visaSession;
+        private const string AnsiClearToEndOfScreen = "\x1b[0J";
 
     static void Main(string[] args)
     {
@@ -109,6 +110,104 @@ namespace DP832PowerSupply
         AnsiConsole.WriteLine();
     }
 
+    /// <summary>
+    /// Shows a selection menu that supports the ESC key to go back.
+    /// Returns the selected choice, or null if ESC was pressed.
+    /// </summary>
+    static string ShowMenuWithEsc(string title, string[] choices)
+    {
+        if (choices == null)
+            throw new ArgumentNullException(nameof(choices));
+        if (choices.Length == 0)
+            throw new ArgumentException("At least one choice must be provided.", nameof(choices));
+
+        int selectedIndex = 0;
+        // Lines used by: title (1), blank (1), optional "more choices" hint (1), blank (1), ESC hint (1), plus margin (2)
+        const int menuChromeHeight = 7;
+        int pageSize = Math.Max(1, Console.WindowHeight - menuChromeHeight);
+        int pageOffset = 0;
+        int lastLinesDrawn = 0; // track lines drawn in previous render to erase them
+
+        Console.CursorVisible = false;
+        try
+        {
+            while (true)
+            {
+                // Erase the previous render by moving cursor up exactly as many lines as were drawn
+                if (lastLinesDrawn > 0)
+                {
+                    Console.Write($"\x1b[{lastLinesDrawn}A"); // cursor up
+                    Console.Write(AnsiClearToEndOfScreen);    // clear from cursor to end of screen
+                }
+
+                // Adjust page offset to keep selected item in view
+                if (selectedIndex < pageOffset)
+                    pageOffset = selectedIndex;
+                else if (selectedIndex >= pageOffset + pageSize)
+                    pageOffset = selectedIndex - pageSize + 1;
+
+                bool scrollable = choices.Length > pageSize;
+                int displayCount = Math.Min(pageSize, choices.Length - pageOffset);
+
+                // Count and draw every line so we know exactly how many to erase next time
+                int linesDrawn = 0;
+
+                AnsiConsole.MarkupLine(title);
+                linesDrawn++;
+                AnsiConsole.WriteLine();
+                linesDrawn++;
+
+                for (int i = pageOffset; i < pageOffset + displayCount; i++)
+                {
+                    string escaped = Markup.Escape(choices[i]);
+                    if (i == selectedIndex)
+                        AnsiConsole.MarkupLine($"[blue]>  {escaped}[/]");
+                    else
+                        AnsiConsole.MarkupLine($"   {escaped}");
+                    linesDrawn++;
+                }
+
+                if (scrollable)
+                {
+                    AnsiConsole.MarkupLine("[grey](Move up and down to reveal more options)[/]");
+                    linesDrawn++;
+                }
+
+                AnsiConsole.WriteLine();
+                linesDrawn++;
+                AnsiConsole.MarkupLine("[grey](Use arrow keys to navigate, Enter to select, Esc to go back)[/]");
+                linesDrawn++;
+
+                lastLinesDrawn = linesDrawn;
+
+                ConsoleKeyInfo key = Console.ReadKey(true);
+                switch (key.Key)
+                {
+                    case ConsoleKey.UpArrow:
+                        if (selectedIndex > 0) selectedIndex--;
+                        break;
+                    case ConsoleKey.DownArrow:
+                        if (selectedIndex < choices.Length - 1) selectedIndex++;
+                        break;
+                    case ConsoleKey.Home:
+                        selectedIndex = 0;
+                        break;
+                    case ConsoleKey.End:
+                        selectedIndex = choices.Length - 1;
+                        break;
+                    case ConsoleKey.Enter:
+                        return choices[selectedIndex];
+                    case ConsoleKey.Escape:
+                        return null;
+                }
+            }
+        }
+        finally
+        {
+            Console.CursorVisible = true;
+        }
+    }
+
     static string ShowMainMenu()
     {
         var connectionStatus = visaSession != null ? "[green]Connected[/]" : "[red]Disconnected[/]";
@@ -117,23 +216,20 @@ namespace DP832PowerSupply
         AnsiConsole.MarkupLine($"[bold]Connection Status:[/] {connectionStatus}");
         AnsiConsole.WriteLine();
         
-        var selection = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title("[bold cyan]What would you like to do?[/]")
-                .PageSize(10)
-                .MoreChoicesText("[grey](Move up and down to reveal more options)[/]")
-                .AddChoices(new[] {
-                    "Configure Device Address",
-                    "Connect to Device",
-                    "Disconnect from Device",
-                    "Channel Controls",
-                    "Advanced Options",
-                    "Show Current Settings",
-                    "Reset Device",
-                    "Exit"
-                }));
+        var selection = ShowMenuWithEsc(
+            "[bold cyan]What would you like to do?[/]",
+            new[] {
+                "Configure Device Address",
+                "Connect to Device",
+                "Disconnect from Device",
+                "Channel Controls",
+                "Advanced Options",
+                "Show Current Settings",
+                "Reset Device",
+                "Exit"
+            });
         
-        return selection;
+        return selection ?? "Exit";
     }
 
     static void ConfigureDeviceAddress()
@@ -686,18 +782,16 @@ namespace DP832PowerSupply
         while (!exitChannelMenu)
         {
             AnsiConsole.WriteLine();
-            var channelChoice = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("[bold cyan]Select a Channel to Control:[/]")
-                    .PageSize(10)
-                    .AddChoices(new[] {
-                        "Channel 1 (CH1) - 30V/3A",
-                        "Channel 2 (CH2) - 30V/3A",
-                        "Channel 3 (CH3) - 5V/3A",
-                        "Back to Main Menu"
-                    }));
+            var channelChoice = ShowMenuWithEsc(
+                "[bold cyan]Select a Channel to Control:[/]",
+                new[] {
+                    "Channel 1 (CH1) - 30V/3A",
+                    "Channel 2 (CH2) - 30V/3A",
+                    "Channel 3 (CH3) - 5V/3A",
+                    "Back to Main Menu"
+                });
 
-            if (channelChoice == "Back to Main Menu")
+            if (channelChoice == null || channelChoice == "Back to Main Menu")
             {
                 exitChannelMenu = true;
             }
@@ -734,21 +828,23 @@ namespace DP832PowerSupply
             AnsiConsole.MarkupLine($"[bold cyan]Controls for {channelName}[/]");
             AnsiConsole.WriteLine();
             
-            var controlChoice = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title($"What would you like to control for [yellow]{channelName}[/]?")
-                    .PageSize(10)
-                    .AddChoices(new[] {
-                        "Set Voltage",
-                        "Set Current",
-                        "Configure OVP (Over Voltage Protection)",
-                        "Configure OCP (Over Current Protection)",
-                        "View Channel Status",
-                        "Back to Channel Selection"
-                    }));
+            var controlChoice = ShowMenuWithEsc(
+                $"What would you like to control for [yellow]{channelName}[/]?",
+                new[] {
+                    "Set Voltage",
+                    "Set Current",
+                    "Configure OVP (Over Voltage Protection)",
+                    "Configure OCP (Over Current Protection)",
+                    "View Channel Status",
+                    "Back to Channel Selection"
+                });
 
             switch (controlChoice)
             {
+                case null: // ESC pressed - go back
+                case "Back to Channel Selection":
+                    exitSubMenu = true;
+                    break;
                 case "Set Voltage":
                     SetChannelVoltage(channelNum, maxVoltage);
                     break;
@@ -763,9 +859,6 @@ namespace DP832PowerSupply
                     break;
                 case "View Channel Status":
                     ViewChannelStatus(channelNum);
-                    break;
-                case "Back to Channel Selection":
-                    exitSubMenu = true;
                     break;
             }
 
@@ -1071,21 +1164,23 @@ namespace DP832PowerSupply
         while (!exitMenu)
         {
             AnsiConsole.WriteLine();
-            var choice = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("[bold cyan]Advanced Options[/]")
-                    .PageSize(10)
-                    .AddChoices(new[] {
-                        "Configure Output State",
-                        "Configure Tracking",
-                        "Configure OTP (Over Temperature Protection)",
-                        "Configure Beeper",
-                        "Configure Display Settings",
-                        "Back to Main Menu"
-                    }));
+            var choice = ShowMenuWithEsc(
+                "[bold cyan]Advanced Options[/]",
+                new[] {
+                    "Configure Output State",
+                    "Configure Tracking",
+                    "Configure OTP (Over Temperature Protection)",
+                    "Configure Beeper",
+                    "Configure Display Settings",
+                    "Back to Main Menu"
+                });
 
             switch (choice)
             {
+                case null: // ESC pressed - go back
+                case "Back to Main Menu":
+                    exitMenu = true;
+                    break;
                 case "Configure Output State":
                     ConfigureOutputState();
                     break;
@@ -1100,9 +1195,6 @@ namespace DP832PowerSupply
                     break;
                 case "Configure Display Settings":
                     ConfigureDisplaySettings();
-                    break;
-                case "Back to Main Menu":
-                    exitMenu = true;
                     break;
             }
 
@@ -1149,12 +1241,11 @@ namespace DP832PowerSupply
             AnsiConsole.WriteLine();
 
             // Select channel to configure
-            var channelChoice = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("Select [green]channel[/] to configure:")
-                    .AddChoices(new[] { "CH1", "CH2", "CH3", "All Channels On", "All Channels Off", "Cancel" }));
+            var channelChoice = ShowMenuWithEsc(
+                "Select [green]channel[/] to configure:",
+                new[] { "CH1", "CH2", "CH3", "All Channels On", "All Channels Off", "Cancel" });
 
-            if (channelChoice == "Cancel")
+            if (channelChoice == null || channelChoice == "Cancel")
                 return;
 
             if (channelChoice == "All Channels On" || channelChoice == "All Channels Off")
@@ -1214,25 +1305,26 @@ namespace DP832PowerSupply
                 $"[yellow]CH2:[/] {(trackCh2On ? "[green]On[/]" : "[grey]Off[/]")}");
             AnsiConsole.WriteLine();
 
-            var trackChoice = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("What would you like to configure?")
-                    .AddChoices(new[] {
-                        "Set Track Mode (SYNC/INDE)",
-                        "Enable/Disable CH1 Track",
-                        "Enable/Disable CH2 Track",
-                        "Cancel"
-                    }));
+            var trackChoice = ShowMenuWithEsc(
+                "What would you like to configure?",
+                new[] {
+                    "Set Track Mode (SYNC/INDE)",
+                    "Enable/Disable CH1 Track",
+                    "Enable/Disable CH2 Track",
+                    "Cancel"
+                });
 
-            if (trackChoice == "Cancel")
+            if (trackChoice == null || trackChoice == "Cancel")
                 return;
 
             if (trackChoice == "Set Track Mode (SYNC/INDE)")
             {
-                var modeChoice = AnsiConsole.Prompt(
-                    new SelectionPrompt<string>()
-                        .Title("Select [green]track mode[/]:")
-                        .AddChoices(new[] { "SYNC (Synchronous)", "INDE (Independent)" }));
+                var modeChoice = ShowMenuWithEsc(
+                    "Select [green]track mode[/]:",
+                    new[] { "SYNC (Synchronous)", "INDE (Independent)" });
+
+                if (modeChoice == null)
+                    return;
 
                 string modeCmd = modeChoice.StartsWith("SYNC") ? "SYNC" : "INDE";
                 if (SendCommandAndCheckErrors($":SYSTem:TRACKMode {modeCmd}"))
@@ -1319,21 +1411,21 @@ namespace DP832PowerSupply
         bool exitDisplay = false;
         while (!exitDisplay)
         {
-            var displayChoice = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("[bold]Display Settings[/]")
-                    .AddChoices(new[] { "Set Brightness", "Configure Screen Saver", "Back" }));
+            var displayChoice = ShowMenuWithEsc(
+                "[bold]Display Settings[/]",
+                new[] { "Set Brightness", "Configure Screen Saver", "Back" });
 
             switch (displayChoice)
             {
+                case null: // ESC pressed - go back
+                case "Back":
+                    exitDisplay = true;
+                    break;
                 case "Set Brightness":
                     ConfigureDisplayBrightness();
                     break;
                 case "Configure Screen Saver":
                     ConfigureScreenSaver();
-                    break;
-                case "Back":
-                    exitDisplay = true;
                     break;
             }
 
