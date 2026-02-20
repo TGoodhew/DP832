@@ -163,10 +163,53 @@ namespace DP832PowerSupply
                 break;
                 
             case "TCPIP":
-                var ipAddress = AnsiConsole.Prompt(
-                    new TextPrompt<string>("Enter [green]IP address[/] (e.g., 192.168.1.100):")
-                        .DefaultValue("192.168.1.100"));
-                newAddress = $"TCPIP::{ipAddress}::INSTR";
+                string ipPrefix = "192.168.1";
+                string lastOctetDefault = "100";
+                if (deviceAddress.StartsWith("TCPIP::"))
+                {
+                    string currentIp = deviceAddress.Substring("TCPIP::".Length);
+                    int colonIdx = currentIp.IndexOf("::");
+                    if (colonIdx >= 0)
+                        currentIp = currentIp.Substring(0, colonIdx);
+                    string[] octets = currentIp.Split('.');
+                    if (octets.Length == 4 &&
+                        int.TryParse(octets[0], out int o0) && o0 >= 0 && o0 <= 255 &&
+                        int.TryParse(octets[1], out int o1) && o1 >= 0 && o1 <= 255 &&
+                        int.TryParse(octets[2], out int o2) && o2 >= 0 && o2 <= 255 &&
+                        int.TryParse(octets[3], out int o3) && o3 >= 0 && o3 <= 255)
+                    {
+                        ipPrefix = $"{o0}.{o1}.{o2}";
+                        lastOctetDefault = octets[3];
+                    }
+                }
+                var ipInput = AnsiConsole.Prompt(
+                    new TextPrompt<string>($"Enter [green]IP address[/] or last octet ([yellow]{Markup.Escape(ipPrefix)}.[/]):")
+                        .DefaultValue(lastOctetDefault)
+                        .Validate(input =>
+                        {
+                            if (int.TryParse(input, out int octet) && octet >= 1 && octet <= 254)
+                                return ValidationResult.Success();
+                            string[] parts = input.Split('.');
+                            if (parts.Length == 4)
+                            {
+                                bool valid = true;
+                                foreach (string part in parts)
+                                {
+                                    if (!int.TryParse(part, out int b) || b < 0 || b > 255)
+                                    {
+                                        valid = false;
+                                        break;
+                                    }
+                                }
+                                if (valid)
+                                    return ValidationResult.Success();
+                            }
+                            return ValidationResult.Error("[red]Enter a valid last octet (1-254) or full IP address[/]");
+                        }));
+                if (int.TryParse(ipInput, out int finalLastOctet))
+                    newAddress = $"TCPIP::{ipPrefix}.{finalLastOctet}::INSTR";
+                else
+                    newAddress = $"TCPIP::{ipInput}::INSTR";
                 break;
                 
             case "Custom":
