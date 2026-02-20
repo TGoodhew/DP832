@@ -362,7 +362,7 @@ namespace DP832PowerSupply
                         ocpEnabled[i] = ParseProtectionState(ocpStateStr);
                         
                         // Query output state
-                        visaSession.FormattedIO.WriteLine($":OUTPut{channelNum}?");
+                        visaSession.FormattedIO.WriteLine($":OUTPut? CH{channelNum}");
                         string outputStateStr = visaSession.FormattedIO.ReadLine();
                         outputEnabled[i] = ParseProtectionState(outputStateStr);
                     }
@@ -461,18 +461,34 @@ namespace DP832PowerSupply
                 
                 try
                 {
-                    visaSession.FormattedIO.WriteLine(":OUTPut:TRAC?");
+                    visaSession.FormattedIO.WriteLine(":SYSTem:TRACKMode?");
                     string trackStr = visaSession.FormattedIO.ReadLine().Trim();
-                    sysTable.AddRow("Tracking Mode", $"[yellow]{Markup.Escape(trackStr)}[/]");
+                    sysTable.AddRow("Track Mode", $"[yellow]{Markup.Escape(trackStr)}[/]");
                 }
                 catch
                 {
-                    sysTable.AddRow("Tracking Mode", "[red]Error[/]");
+                    sysTable.AddRow("Track Mode", "[red]Error[/]");
                 }
                 
                 try
                 {
-                    visaSession.FormattedIO.WriteLine(":OUTPut:OTP:STAT?");
+                    visaSession.FormattedIO.WriteLine(":OUTPut:TRACk? CH1");
+                    string trackCh1Str = visaSession.FormattedIO.ReadLine();
+                    bool trackCh1On = ParseProtectionState(trackCh1Str);
+                    visaSession.FormattedIO.WriteLine(":OUTPut:TRACk? CH2");
+                    string trackCh2Str = visaSession.FormattedIO.ReadLine();
+                    bool trackCh2On = ParseProtectionState(trackCh2Str);
+                    sysTable.AddRow("Track (CH1/CH2)",
+                        $"{(trackCh1On ? "[green]CH1 On[/]" : "[grey]CH1 Off[/]")} / {(trackCh2On ? "[green]CH2 On[/]" : "[grey]CH2 Off[/]")}");
+                }
+                catch
+                {
+                    sysTable.AddRow("Track (CH1/CH2)", "[red]Error[/]");
+                }
+                
+                try
+                {
+                    visaSession.FormattedIO.WriteLine(":SYSTem:OTP?");
                     string otpStr = visaSession.FormattedIO.ReadLine();
                     bool otpOn = ParseProtectionState(otpStr);
                     sysTable.AddRow("OTP (Over Temp Protection)", otpOn ? "[green]Enabled[/]" : "[red]Disabled[/]");
@@ -484,7 +500,7 @@ namespace DP832PowerSupply
                 
                 try
                 {
-                    visaSession.FormattedIO.WriteLine(":SYSTem:BEEPer:STAT?");
+                    visaSession.FormattedIO.WriteLine(":SYSTem:BEEPer?");
                     string beeperStr = visaSession.FormattedIO.ReadLine();
                     bool beeperOn = ParseProtectionState(beeperStr);
                     sysTable.AddRow("Beeper", beeperOn ? "[green]Enabled[/]" : "[grey]Disabled[/]");
@@ -496,7 +512,7 @@ namespace DP832PowerSupply
                 
                 try
                 {
-                    visaSession.FormattedIO.WriteLine(":DISPlay:BRIGhtness?");
+                    visaSession.FormattedIO.WriteLine(":SYSTem:BRIGhtness?");
                     string brightnessStr = visaSession.FormattedIO.ReadLine();
                     sysTable.AddRow("Display Brightness", $"[yellow]{Markup.Escape(brightnessStr.Trim())}%[/]");
                 }
@@ -507,7 +523,7 @@ namespace DP832PowerSupply
                 
                 try
                 {
-                    visaSession.FormattedIO.WriteLine(":DISPlay:SSAVer:STAT?");
+                    visaSession.FormattedIO.WriteLine(":SYSTem:SAVer?");
                     string ssaverStr = visaSession.FormattedIO.ReadLine();
                     bool ssaverOn = ParseProtectionState(ssaverStr);
                     sysTable.AddRow("Screen Saver", ssaverOn ? "[green]Enabled[/]" : "[grey]Disabled[/]");
@@ -530,6 +546,69 @@ namespace DP832PowerSupply
     {
         string trimmedState = stateStr.Trim();
         return trimmedState.Equals("ON", StringComparison.OrdinalIgnoreCase) || trimmedState == "1";
+    }
+
+    /// <summary>
+    /// Checks the Standard Event Status Register (*ESR?) for SCPI errors.
+    /// If error bits are set, reads and displays each error from :SYSTem:ERRor?.
+    /// Returns true if no errors were detected.
+    /// </summary>
+    static bool CheckScpiErrors()
+    {
+        try
+        {
+            visaSession.FormattedIO.WriteLine("*ESR?");
+            string esrStr = visaSession.FormattedIO.ReadLine();
+            int esr = int.Parse(esrStr.Trim(), CultureInfo.InvariantCulture);
+            
+            // Bits 2 (QYE=4), 3 (DDE=8), 4 (EXE=16), 5 (CME=32) indicate errors
+            const int QYE = 4;   // Query Error
+            const int DDE = 8;   // Device Dependent Error
+            const int EXE = 16;  // Execution Error
+            const int CME = 32;  // Command Error
+            const int errorMask = QYE | DDE | EXE | CME;
+            if ((esr & errorMask) == 0)
+                return true;
+            
+            bool hasErrors = false;
+            const int maxErrorReads = 10;
+            int maxErrors = maxErrorReads;
+            while (maxErrors-- > 0)
+            {
+                visaSession.FormattedIO.WriteLine(":SYSTem:ERRor?");
+                string errorStr = visaSession.FormattedIO.ReadLine().Trim();
+                if (errorStr.StartsWith("0,", StringComparison.Ordinal))
+                    break;
+                AnsiConsole.MarkupLine($"[red]✗ Device error:[/] {Markup.Escape(errorStr)}");
+                hasErrors = true;
+            }
+            return !hasErrors;
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]✗ Error checking device status:[/] {Markup.Escape(ex.Message)}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Clears the Standard Event Register, sends a SCPI command, then checks
+    /// *ESR? and :SYSTem:ERRor? to surface any device errors to the user.
+    /// Returns true if the command succeeded without errors.
+    /// </summary>
+    static bool SendCommandAndCheckErrors(string command)
+    {
+        try
+        {
+            visaSession.FormattedIO.WriteLine("*CLS");
+            visaSession.FormattedIO.WriteLine(command);
+            return CheckScpiErrors();
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]✗ Error sending command:[/] {Markup.Escape(ex.Message)}");
+            return false;
+        }
     }
 
     static void ChannelControlsMenu()
@@ -931,7 +1010,7 @@ namespace DP832PowerSupply
                     .PageSize(10)
                     .AddChoices(new[] {
                         "Configure Output State",
-                        "Configure Tracking Mode",
+                        "Configure Tracking",
                         "Configure OTP (Over Temperature Protection)",
                         "Configure Beeper",
                         "Configure Display Settings",
@@ -943,7 +1022,7 @@ namespace DP832PowerSupply
                 case "Configure Output State":
                     ConfigureOutputState();
                     break;
-                case "Configure Tracking Mode":
+                case "Configure Tracking":
                     ConfigureTracking();
                     break;
                 case "Configure OTP (Over Temperature Protection)":
@@ -990,7 +1069,7 @@ namespace DP832PowerSupply
                 int channelNum = i + 1;
                 try
                 {
-                    visaSession.FormattedIO.WriteLine($":OUTPut{channelNum}?");
+                    visaSession.FormattedIO.WriteLine($":OUTPut? CH{channelNum}");
                     string stateStr = visaSession.FormattedIO.ReadLine();
                     currentStates[i] = ParseProtectionState(stateStr);
                     stateTable.AddRow($"CH{channelNum}", currentStates[i] ? "[green]On[/]" : "[grey]Off[/]");
@@ -1016,11 +1095,14 @@ namespace DP832PowerSupply
             if (channelChoice == "All Channels On" || channelChoice == "All Channels Off")
             {
                 string state = channelChoice == "All Channels On" ? "ON" : "OFF";
+                bool allOk = true;
                 for (int i = 1; i <= 3; i++)
                 {
-                    visaSession.FormattedIO.WriteLine($":OUTPut{i} {state}");
+                    if (!SendCommandAndCheckErrors($":OUTPut CH{i},{state}"))
+                        allOk = false;
                 }
-                AnsiConsole.MarkupLine($"[green]✓[/] All channels turned [yellow]{state}[/]");
+                if (allOk)
+                    AnsiConsole.MarkupLine($"[green]✓[/] All channels turned [yellow]{state}[/]");
                 return;
             }
 
@@ -1031,8 +1113,8 @@ namespace DP832PowerSupply
                 return;
             }
             bool enable = AnsiConsole.Confirm($"Enable output for {channelChoice}?", currentStates[ch - 1]);
-            visaSession.FormattedIO.WriteLine($":OUTPut{ch} {(enable ? "ON" : "OFF")}");
-            AnsiConsole.MarkupLine($"[green]✓[/] {channelChoice} output {(enable ? "[green]enabled[/]" : "[grey]disabled[/]")}");
+            if (SendCommandAndCheckErrors($":OUTPut CH{ch},{(enable ? "ON" : "OFF")}"))
+                AnsiConsole.MarkupLine($"[green]✓[/] {channelChoice} output {(enable ? "[green]enabled[/]" : "[grey]disabled[/]")}");
         }
         catch (Exception ex)
         {
@@ -1043,38 +1125,65 @@ namespace DP832PowerSupply
     static void ConfigureTracking()
     {
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[bold cyan]Configure Tracking Mode[/]");
-        AnsiConsole.MarkupLine("[grey]Tracking links CH1 and CH2 for series or parallel operation.[/]");
+        AnsiConsole.MarkupLine("[bold cyan]Configure Tracking[/]");
+        AnsiConsole.MarkupLine("[grey]Tracking links CH1 and CH2 to mirror voltage settings.[/]");
         AnsiConsole.WriteLine();
 
         try
         {
-            visaSession.FormattedIO.WriteLine(":OUTPut:TRAC?");
-            string currentTrack = visaSession.FormattedIO.ReadLine().Trim();
-            AnsiConsole.MarkupLine($"[yellow]Current tracking mode:[/] {Markup.Escape(currentTrack)}");
+            // Show current track mode and per-channel track state
+            visaSession.FormattedIO.WriteLine(":SYSTem:TRACKMode?");
+            string currentMode = visaSession.FormattedIO.ReadLine().Trim();
+            
+            visaSession.FormattedIO.WriteLine(":OUTPut:TRACk? CH1");
+            string trackCh1Str = visaSession.FormattedIO.ReadLine();
+            bool trackCh1On = ParseProtectionState(trackCh1Str);
+            
+            visaSession.FormattedIO.WriteLine(":OUTPut:TRACk? CH2");
+            string trackCh2Str = visaSession.FormattedIO.ReadLine();
+            bool trackCh2On = ParseProtectionState(trackCh2Str);
+
+            AnsiConsole.MarkupLine($"[yellow]Track mode:[/] {Markup.Escape(currentMode)}  " +
+                $"[yellow]CH1:[/] {(trackCh1On ? "[green]On[/]" : "[grey]Off[/]")}  " +
+                $"[yellow]CH2:[/] {(trackCh2On ? "[green]On[/]" : "[grey]Off[/]")}");
             AnsiConsole.WriteLine();
 
             var trackChoice = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
-                    .Title("Select [green]tracking mode[/]:")
-                    .AddChoices(new[] { "OFF (Independent)", "CH1 (Series with CH2)", "CH2 (Parallel with CH1)" }));
+                    .Title("What would you like to configure?")
+                    .AddChoices(new[] {
+                        "Set Track Mode (SYNC/INDE)",
+                        "Enable/Disable CH1 Track",
+                        "Enable/Disable CH2 Track",
+                        "Cancel"
+                    }));
 
-            string trackCmd;
-            switch (trackChoice)
+            if (trackChoice == "Cancel")
+                return;
+
+            if (trackChoice == "Set Track Mode (SYNC/INDE)")
             {
-                case "CH1 (Series with CH2)":
-                    trackCmd = "CH1";
-                    break;
-                case "CH2 (Parallel with CH1)":
-                    trackCmd = "CH2";
-                    break;
-                default:
-                    trackCmd = "OFF";
-                    break;
-            }
+                var modeChoice = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("Select [green]track mode[/]:")
+                        .AddChoices(new[] { "SYNC (Synchronous)", "INDE (Independent)" }));
 
-            visaSession.FormattedIO.WriteLine($":OUTPut:TRAC {trackCmd}");
-            AnsiConsole.MarkupLine($"[green]✓[/] Tracking mode set to: [yellow]{Markup.Escape(trackCmd)}[/]");
+                string modeCmd = modeChoice.StartsWith("SYNC") ? "SYNC" : "INDE";
+                if (SendCommandAndCheckErrors($":SYSTem:TRACKMode {modeCmd}"))
+                    AnsiConsole.MarkupLine($"[green]✓[/] Track mode set to: [yellow]{modeCmd}[/]");
+            }
+            else if (trackChoice == "Enable/Disable CH1 Track")
+            {
+                bool enable = AnsiConsole.Confirm("Enable track for CH1?", trackCh1On);
+                if (SendCommandAndCheckErrors($":OUTPut:TRACk CH1,{(enable ? "ON" : "OFF")}"))
+                    AnsiConsole.MarkupLine($"[green]✓[/] CH1 track {(enable ? "[green]enabled[/]" : "[grey]disabled[/]")}");
+            }
+            else if (trackChoice == "Enable/Disable CH2 Track")
+            {
+                bool enable = AnsiConsole.Confirm("Enable track for CH2?", trackCh2On);
+                if (SendCommandAndCheckErrors($":OUTPut:TRACk CH2,{(enable ? "ON" : "OFF")}"))
+                    AnsiConsole.MarkupLine($"[green]✓[/] CH2 track {(enable ? "[green]enabled[/]" : "[grey]disabled[/]")}");
+            }
         }
         catch (Exception ex)
         {
@@ -1090,7 +1199,7 @@ namespace DP832PowerSupply
 
         try
         {
-            visaSession.FormattedIO.WriteLine(":OUTPut:OTP:STAT?");
+            visaSession.FormattedIO.WriteLine(":SYSTem:OTP?");
             string otpStateStr = visaSession.FormattedIO.ReadLine();
             bool otpEnabled = ParseProtectionState(otpStateStr);
 
@@ -1098,8 +1207,8 @@ namespace DP832PowerSupply
             AnsiConsole.WriteLine();
 
             bool enable = AnsiConsole.Confirm("Enable OTP?", otpEnabled);
-            visaSession.FormattedIO.WriteLine($":OUTPut:OTP:STAT {(enable ? "ON" : "OFF")}");
-            AnsiConsole.MarkupLine($"[green]✓[/] OTP {(enable ? "[green]enabled[/]" : "[red]disabled[/]")}");
+            if (SendCommandAndCheckErrors($":SYSTem:OTP {(enable ? "ON" : "OFF")}"))
+                AnsiConsole.MarkupLine($"[green]✓[/] OTP {(enable ? "[green]enabled[/]" : "[red]disabled[/]")}");
         }
         catch (Exception ex)
         {
@@ -1115,7 +1224,7 @@ namespace DP832PowerSupply
 
         try
         {
-            visaSession.FormattedIO.WriteLine(":SYSTem:BEEPer:STAT?");
+            visaSession.FormattedIO.WriteLine(":SYSTem:BEEPer?");
             string beeperStateStr = visaSession.FormattedIO.ReadLine();
             bool beeperEnabled = ParseProtectionState(beeperStateStr);
 
@@ -1123,8 +1232,8 @@ namespace DP832PowerSupply
             AnsiConsole.WriteLine();
 
             bool enable = AnsiConsole.Confirm("Enable beeper?", beeperEnabled);
-            visaSession.FormattedIO.WriteLine($":SYSTem:BEEPer:STAT {(enable ? "ON" : "OFF")}");
-            AnsiConsole.MarkupLine($"[green]✓[/] Beeper {(enable ? "[green]enabled[/]" : "[grey]disabled[/]")}");
+            if (SendCommandAndCheckErrors($":SYSTem:BEEPer {(enable ? "ON" : "OFF")}"))
+                AnsiConsole.MarkupLine($"[green]✓[/] Beeper {(enable ? "[green]enabled[/]" : "[grey]disabled[/]")}");
         }
         catch (Exception ex)
         {
@@ -1176,7 +1285,7 @@ namespace DP832PowerSupply
 
         try
         {
-            visaSession.FormattedIO.WriteLine(":DISPlay:BRIGhtness?");
+            visaSession.FormattedIO.WriteLine(":SYSTem:BRIGhtness?");
             string brightnessStr = visaSession.FormattedIO.ReadLine();
             int currentBrightness = 50; // default fallback
             if (!int.TryParse(brightnessStr.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out currentBrightness))
@@ -1197,8 +1306,8 @@ namespace DP832PowerSupply
                         return ValidationResult.Success();
                     }));
 
-            visaSession.FormattedIO.WriteLine($":DISPlay:BRIGhtness {brightness}");
-            AnsiConsole.MarkupLine($"[green]✓[/] Display brightness set to: [yellow]{brightness}%[/]");
+            if (SendCommandAndCheckErrors($":SYSTem:BRIGhtness {brightness}"))
+                AnsiConsole.MarkupLine($"[green]✓[/] Display brightness set to: [yellow]{brightness}%[/]");
         }
         catch (Exception ex)
         {
@@ -1214,16 +1323,17 @@ namespace DP832PowerSupply
 
         try
         {
-            visaSession.FormattedIO.WriteLine(":DISPlay:SSAVer:STAT?");
+            visaSession.FormattedIO.WriteLine(":SYSTem:SAVer?");
             string ssaverStateStr = visaSession.FormattedIO.ReadLine();
             bool ssaverEnabled = ParseProtectionState(ssaverStateStr);
 
             AnsiConsole.MarkupLine($"[yellow]Current screen saver state:[/] {(ssaverEnabled ? "[green]Enabled[/]" : "[grey]Disabled[/]")}");
+            AnsiConsole.MarkupLine("[grey]When enabled, screen saver activates after 25 minutes standby.[/]");
             AnsiConsole.WriteLine();
 
             bool enable = AnsiConsole.Confirm("Enable screen saver?", ssaverEnabled);
-            visaSession.FormattedIO.WriteLine($":DISPlay:SSAVer:STAT {(enable ? "ON" : "OFF")}");
-            AnsiConsole.MarkupLine($"[green]✓[/] Screen saver {(enable ? "[green]enabled[/]" : "[grey]disabled[/]")}");
+            if (SendCommandAndCheckErrors($":SYSTem:SAVer {(enable ? "ON" : "OFF")}"))
+                AnsiConsole.MarkupLine($"[green]✓[/] Screen saver {(enable ? "[green]enabled[/]" : "[grey]disabled[/]")}");
         }
         catch (Exception ex)
         {
