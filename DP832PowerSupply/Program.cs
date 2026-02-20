@@ -41,6 +41,12 @@ namespace DP832PowerSupply
                     break;
                 case "Show Current Settings":
                     ShowCurrentSettings();
+                    AnsiConsole.WriteLine();
+                    AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
+                    Console.ReadKey(true);
+                    break;
+                case "Reset Device":
+                    ResetDevice();
                     break;
                 case "Exit":
                     exit = true;
@@ -50,9 +56,6 @@ namespace DP832PowerSupply
             
             if (!exit)
             {
-                AnsiConsole.WriteLine();
-                AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
-                Console.ReadKey(true);
                 Console.Clear();
                 ShowTitle();
             }
@@ -180,17 +183,21 @@ namespace DP832PowerSupply
         AnsiConsole.MarkupLine($"[bold]Connection Status:[/] {connectionStatus}");
         AnsiConsole.WriteLine();
         
-        var selection = ShowMenuWithEsc(
-            "[bold cyan]What would you like to do?[/]",
-            new[] {
-                "Configure Device Address",
-                "Connect to Device",
-                "Disconnect from Device",
-                "Channel Controls",
-                "Advanced Options",
-                "Show Current Settings",
-                "Exit"
-            });
+        var selection = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("[bold cyan]What would you like to do?[/]")
+                .PageSize(10)
+                .MoreChoicesText("[grey](Move up and down to reveal more options)[/]")
+                .AddChoices(new[] {
+                    "Configure Device Address",
+                    "Connect to Device",
+                    "Disconnect from Device",
+                    "Channel Controls",
+                    "Advanced Options",
+                    "Show Current Settings",
+                    "Reset Device",
+                    "Exit"
+                }));
         
         return selection ?? "Exit";
     }
@@ -222,10 +229,53 @@ namespace DP832PowerSupply
                 break;
                 
             case "TCPIP":
-                var ipAddress = AnsiConsole.Prompt(
-                    new TextPrompt<string>("Enter [green]IP address[/] (e.g., 192.168.1.100):")
-                        .DefaultValue("192.168.1.100"));
-                newAddress = $"TCPIP::{ipAddress}::INSTR";
+                string ipPrefix = "192.168.1";
+                string lastOctetDefault = "100";
+                if (deviceAddress.StartsWith("TCPIP::"))
+                {
+                    string currentIp = deviceAddress.Substring("TCPIP::".Length);
+                    int colonIdx = currentIp.IndexOf("::");
+                    if (colonIdx >= 0)
+                        currentIp = currentIp.Substring(0, colonIdx);
+                    string[] octets = currentIp.Split('.');
+                    if (octets.Length == 4 &&
+                        int.TryParse(octets[0], out int o0) && o0 >= 0 && o0 <= 255 &&
+                        int.TryParse(octets[1], out int o1) && o1 >= 0 && o1 <= 255 &&
+                        int.TryParse(octets[2], out int o2) && o2 >= 0 && o2 <= 255 &&
+                        int.TryParse(octets[3], out int o3) && o3 >= 0 && o3 <= 255)
+                    {
+                        ipPrefix = $"{o0}.{o1}.{o2}";
+                        lastOctetDefault = octets[3];
+                    }
+                }
+                var ipInput = AnsiConsole.Prompt(
+                    new TextPrompt<string>($"Enter [green]IP address[/] or last octet ([yellow]{Markup.Escape(ipPrefix)}.[/]):")
+                        .DefaultValue(lastOctetDefault)
+                        .Validate(input =>
+                        {
+                            if (int.TryParse(input, out int octet) && octet >= 1 && octet <= 254)
+                                return ValidationResult.Success();
+                            string[] parts = input.Split('.');
+                            if (parts.Length == 4)
+                            {
+                                bool valid = true;
+                                foreach (string part in parts)
+                                {
+                                    if (!int.TryParse(part, out int b) || b < 0 || b > 255)
+                                    {
+                                        valid = false;
+                                        break;
+                                    }
+                                }
+                                if (valid)
+                                    return ValidationResult.Success();
+                            }
+                            return ValidationResult.Error("[red]Enter a valid last octet (1-254) or full IP address[/]");
+                        }));
+                if (int.TryParse(ipInput, out int finalLastOctet))
+                    newAddress = $"TCPIP::{ipPrefix}.{finalLastOctet}::INSTR";
+                else
+                    newAddress = $"TCPIP::{ipInput}::INSTR";
                 break;
                 
             case "Custom":
@@ -257,6 +307,7 @@ namespace DP832PowerSupply
         }
         
         AnsiConsole.WriteLine();
+        Exception connectionError = null;
         AnsiConsole.Status()
             .Start($"Connecting to [yellow]{Markup.Escape(deviceAddress)}[/]...", ctx =>
             {
@@ -288,12 +339,18 @@ namespace DP832PowerSupply
                     }
                     resourceManager?.Dispose();
                     resourceManager = null;
-                    AnsiConsole.WriteLine();
-                    AnsiConsole.MarkupLine($"[red]✗ Connection failed:[/] {Markup.Escape(ex.Message)}");
-                    AnsiConsole.MarkupLine("[yellow]Note:[/] Make sure the device is powered on and the address is correct.");
-                    AnsiConsole.MarkupLine("[yellow]Note:[/] NI-VISA runtime must be installed on your system.");
+                    connectionError = ex;
                 }
             });
+
+        if (connectionError != null)
+        {
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine($"[red]✗ Connection failed:[/] {Markup.Escape(connectionError.Message)}");
+            AnsiConsole.MarkupLine("[yellow]Note:[/] Make sure the device is powered on and the address is correct.");
+            AnsiConsole.MarkupLine("[yellow]Note:[/] NI-VISA runtime must be installed on your system.");
+            PauseOnError();
+        }
     }
 
     static void DisconnectFromDevice()
@@ -315,6 +372,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error during disconnect:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -674,11 +732,19 @@ namespace DP832PowerSupply
         }
     }
 
+    static void PauseOnError()
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
+        Console.ReadKey(true);
+    }
+
     static void ChannelControlsMenu()
     {
         if (visaSession == null)
         {
             AnsiConsole.MarkupLine("[red]✗[/] Not connected to device. Please connect first.");
+            PauseOnError();
             return;
         }
 
@@ -769,8 +835,6 @@ namespace DP832PowerSupply
             if (!exitSubMenu)
             {
                 AnsiConsole.WriteLine();
-                AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
-                Console.ReadKey(true);
             }
         }
     }
@@ -816,6 +880,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error setting voltage:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -860,6 +925,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error setting current:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -915,6 +981,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring OVP:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -970,6 +1037,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring OCP:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -1049,6 +1117,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error reading channel status:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -1057,6 +1126,7 @@ namespace DP832PowerSupply
         if (visaSession == null)
         {
             AnsiConsole.MarkupLine("[red]✗[/] Not connected to device. Please connect first.");
+            PauseOnError();
             return;
         }
 
@@ -1101,8 +1171,6 @@ namespace DP832PowerSupply
             if (!exitMenu)
             {
                 AnsiConsole.WriteLine();
-                AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
-                Console.ReadKey(true);
             }
         }
     }
@@ -1177,6 +1245,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring output state:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -1247,6 +1316,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring tracking:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -1272,6 +1342,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring OTP:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -1297,6 +1368,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring beeper:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -1330,8 +1402,6 @@ namespace DP832PowerSupply
             if (!exitDisplay)
             {
                 AnsiConsole.WriteLine();
-                AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
-                Console.ReadKey(true);
             }
         }
     }
@@ -1371,6 +1441,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring brightness:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -1397,6 +1468,42 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring screen saver:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
+        }
+    }
+
+    static void ResetDevice()
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[bold cyan]Reset Device[/]");
+        AnsiConsole.WriteLine();
+
+        if (visaSession == null)
+        {
+            AnsiConsole.MarkupLine("[red]✗[/] Not connected to device. Please connect first.");
+            return;
+        }
+
+        AnsiConsole.MarkupLine("[yellow]⚠ WARNING:[/] This will reset the DP832 to its factory default state.");
+        AnsiConsole.MarkupLine("[grey]All channel settings, protection levels, and system settings will be restored to defaults.[/]");
+        AnsiConsole.WriteLine();
+
+        if (!AnsiConsole.Confirm("Are you sure you want to reset the device?", false))
+        {
+            AnsiConsole.MarkupLine("[grey]Reset cancelled.[/]");
+            return;
+        }
+
+        try
+        {
+            if (SendCommandAndCheckErrors("*RST"))
+                AnsiConsole.MarkupLine("[green]✓[/] Device has been reset to factory default state.");
+            else
+                AnsiConsole.MarkupLine("[red]✗[/] Reset command reported errors. Check device state.");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]✗ Error resetting device:[/] {Markup.Escape(ex.Message)}");
         }
     }
 }
