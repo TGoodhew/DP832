@@ -41,6 +41,9 @@ namespace DP832PowerSupply
                 case "Show Current Settings":
                     ShowCurrentSettings();
                     break;
+                case "Reset Device":
+                    ResetDevice();
+                    break;
                 case "Exit":
                     exit = true;
                     DisconnectFromDevice();
@@ -126,6 +129,7 @@ namespace DP832PowerSupply
                     "Channel Controls",
                     "Advanced Options",
                     "Show Current Settings",
+                    "Reset Device",
                     "Exit"
                 }));
         
@@ -1338,6 +1342,41 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring screen saver:[/] {Markup.Escape(ex.Message)}");
+        }
+    }
+
+    static void ResetDevice()
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[bold cyan]Reset Device[/]");
+        AnsiConsole.WriteLine();
+
+        if (visaSession == null)
+        {
+            AnsiConsole.MarkupLine("[red]✗[/] Not connected to device. Please connect first.");
+            return;
+        }
+
+        AnsiConsole.MarkupLine("[yellow]⚠ WARNING:[/] This will reset the DP832 to its factory default state.");
+        AnsiConsole.MarkupLine("[grey]All channel settings, protection levels, and system settings will be restored to defaults.[/]");
+        AnsiConsole.WriteLine();
+
+        if (!AnsiConsole.Confirm("Are you sure you want to reset the device?", false))
+        {
+            AnsiConsole.MarkupLine("[grey]Reset cancelled.[/]");
+            return;
+        }
+
+        try
+        {
+            if (SendCommandAndCheckErrors("*RST"))
+                AnsiConsole.MarkupLine("[green]✓[/] Device has been reset to factory default state.");
+            else
+                AnsiConsole.MarkupLine("[red]✗[/] Reset command reported errors. Check device state.");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]✗ Error resetting device:[/] {Markup.Escape(ex.Message)}");
         }
     }
 }
