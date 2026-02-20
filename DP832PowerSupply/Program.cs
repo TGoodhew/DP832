@@ -229,6 +229,7 @@ namespace DP832PowerSupply
                     AnsiConsole.MarkupLine($"[red]✗ Connection failed:[/] {Markup.Escape(ex.Message)}");
                     AnsiConsole.MarkupLine("[yellow]Note:[/] Make sure the device is powered on and the address is correct.");
                     AnsiConsole.MarkupLine("[yellow]Note:[/] NI-VISA runtime must be installed on your system.");
+                    PauseOnError();
                 }
             });
     }
@@ -252,6 +253,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error during disconnect:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -611,11 +613,19 @@ namespace DP832PowerSupply
         }
     }
 
+    static void PauseOnError()
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
+        Console.ReadKey(true);
+    }
+
     static void ChannelControlsMenu()
     {
         if (visaSession == null)
         {
             AnsiConsole.MarkupLine("[red]✗[/] Not connected to device. Please connect first.");
+            PauseOnError();
             return;
         }
 
@@ -754,6 +764,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error setting voltage:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -798,6 +809,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error setting current:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -853,6 +865,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring OVP:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -908,6 +921,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring OCP:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -987,6 +1001,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error reading channel status:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -995,6 +1010,7 @@ namespace DP832PowerSupply
         if (visaSession == null)
         {
             AnsiConsole.MarkupLine("[red]✗[/] Not connected to device. Please connect first.");
+            PauseOnError();
             return;
         }
 
@@ -1115,6 +1131,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring output state:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -1184,6 +1201,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring tracking:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -1209,6 +1227,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring OTP:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -1234,6 +1253,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring beeper:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -1306,6 +1326,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring brightness:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 
@@ -1332,6 +1353,7 @@ namespace DP832PowerSupply
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗ Error configuring screen saver:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
         }
     }
 }
