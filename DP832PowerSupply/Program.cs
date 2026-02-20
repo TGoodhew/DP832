@@ -184,10 +184,10 @@ namespace DP832PowerSupply
                 switch (key.Key)
                 {
                     case ConsoleKey.UpArrow:
-                        if (selectedIndex > 0) selectedIndex--;
+                        selectedIndex = (selectedIndex > 0) ? selectedIndex - 1 : choices.Length - 1;
                         break;
                     case ConsoleKey.DownArrow:
-                        if (selectedIndex < choices.Length - 1) selectedIndex++;
+                        selectedIndex = (selectedIndex < choices.Length - 1) ? selectedIndex + 1 : 0;
                         break;
                     case ConsoleKey.Home:
                         selectedIndex = 0;
