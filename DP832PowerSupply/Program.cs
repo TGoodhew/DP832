@@ -157,7 +157,7 @@ namespace DP832PowerSupply
                 {
                     string escaped = Markup.Escape(choices[i]);
                     if (i == selectedIndex)
-                        AnsiConsole.MarkupLine($"[blue]❯  {escaped}[/]");
+                        AnsiConsole.MarkupLine($"[blue]>  {escaped}[/]");
                     else
                         AnsiConsole.MarkupLine($"   {escaped}");
                 }
