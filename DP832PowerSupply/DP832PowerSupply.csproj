@@ -19,4 +19,8 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\DP832.Helpers\DP832.Helpers.csproj" />
+  </ItemGroup>
+
 </Project>
