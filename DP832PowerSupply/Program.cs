@@ -1770,32 +1770,81 @@ namespace DP832PowerSupply
                 }
             }
 
-            if (settings.TryGetValue("System.TrackMode", out string trackMode))
-                SendCommandAndCheckErrors($":SYSTem:TRACKMode {trackMode}");
+            try
+            {
+                if (settings.TryGetValue("System.TrackMode", out string trackMode))
+                    SendCommandAndCheckErrors($":SYSTem:TRACKMode {trackMode}");
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠[/] Error applying track mode: {Markup.Escape(ex.Message)}");
+            }
 
-            if (settings.TryGetValue("System.TrackCH1", out string trackChannel1Str) &&
-                bool.TryParse(trackChannel1Str, out bool trackChannel1))
-                SendCommandAndCheckErrors($":OUTPut:TRACk CH1,{(trackChannel1 ? "ON" : "OFF")}");
+            try
+            {
+                if (settings.TryGetValue("System.TrackCH1", out string trackChannel1Str) &&
+                    bool.TryParse(trackChannel1Str, out bool trackChannel1))
+                    SendCommandAndCheckErrors($":OUTPut:TRACk CH1,{(trackChannel1 ? "ON" : "OFF")}");
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠[/] Error applying CH1 track state: {Markup.Escape(ex.Message)}");
+            }
 
-            if (settings.TryGetValue("System.TrackCH2", out string trackChannel2Str) &&
-                bool.TryParse(trackChannel2Str, out bool trackChannel2))
-                SendCommandAndCheckErrors($":OUTPut:TRACk CH2,{(trackChannel2 ? "ON" : "OFF")}");
+            try
+            {
+                if (settings.TryGetValue("System.TrackCH2", out string trackChannel2Str) &&
+                    bool.TryParse(trackChannel2Str, out bool trackChannel2))
+                    SendCommandAndCheckErrors($":OUTPut:TRACk CH2,{(trackChannel2 ? "ON" : "OFF")}");
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠[/] Error applying CH2 track state: {Markup.Escape(ex.Message)}");
+            }
 
-            if (settings.TryGetValue("System.OTP", out string otpStr) &&
-                bool.TryParse(otpStr, out bool otp))
-                SendCommandAndCheckErrors($":SYSTem:OTP {(otp ? "ON" : "OFF")}");
+            try
+            {
+                if (settings.TryGetValue("System.OTP", out string otpStr) &&
+                    bool.TryParse(otpStr, out bool otp))
+                    SendCommandAndCheckErrors($":SYSTem:OTP {(otp ? "ON" : "OFF")}");
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠[/] Error applying OTP state: {Markup.Escape(ex.Message)}");
+            }
 
-            if (settings.TryGetValue("System.Beeper", out string beeperStr) &&
-                bool.TryParse(beeperStr, out bool beeper))
-                SendCommandAndCheckErrors($":SYSTem:BEEPer {(beeper ? "ON" : "OFF")}");
+            try
+            {
+                if (settings.TryGetValue("System.Beeper", out string beeperStr) &&
+                    bool.TryParse(beeperStr, out bool beeper))
+                    SendCommandAndCheckErrors($":SYSTem:BEEPer {(beeper ? "ON" : "OFF")}");
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠[/] Error applying beeper state: {Markup.Escape(ex.Message)}");
+            }
 
-            if (settings.TryGetValue("System.Brightness", out string brightnessStr) &&
-                int.TryParse(brightnessStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out int brightness))
-                SendCommandAndCheckErrors($":SYSTem:BRIGhtness {brightness}");
+            try
+            {
+                if (settings.TryGetValue("System.Brightness", out string brightnessStr) &&
+                    int.TryParse(brightnessStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out int brightness))
+                    SendCommandAndCheckErrors($":SYSTem:BRIGhtness {brightness}");
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠[/] Error applying brightness: {Markup.Escape(ex.Message)}");
+            }
 
-            if (settings.TryGetValue("System.ScreenSaver", out string screenSaverStr) &&
-                bool.TryParse(screenSaverStr, out bool screenSaver))
-                SendCommandAndCheckErrors($":SYSTem:SAVer {(screenSaver ? "ON" : "OFF")}");
+            try
+            {
+                if (settings.TryGetValue("System.ScreenSaver", out string screenSaverStr) &&
+                    bool.TryParse(screenSaverStr, out bool screenSaver))
+                    SendCommandAndCheckErrors($":SYSTem:SAVer {(screenSaver ? "ON" : "OFF")}");
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠[/] Error applying screen saver state: {Markup.Escape(ex.Message)}");
+            }
 
             AnsiConsole.MarkupLine($"[green]✓[/] State loaded from: [yellow]{Markup.Escape(filePath)}[/]");
         }
