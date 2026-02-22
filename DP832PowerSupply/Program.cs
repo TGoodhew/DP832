@@ -2112,7 +2112,36 @@ namespace DP832PowerSupply
         try
         {
             if (SendCommandAndCheckErrors("*RST"))
+            {
                 AnsiConsole.MarkupLine("[green]✓[/] Device has been reset to factory default state.");
+
+                // Explicitly clear OVP and OCP trip latches on all channels after reset,
+                // as *RST does not clear these latched conditions.
+                // Each clear is in its own try-catch: the command may return a device
+                // error if no trip was active, and that is expected behaviour.
+                AnsiConsole.MarkupLine("[grey]Clearing protection trip latches...[/]");
+                for (int ch = 1; ch <= 3; ch++)
+                {
+                    try
+                    {
+                        visaSession.FormattedIO.WriteLine($":OUTPut:OVP:CLEAR CH{ch}");
+                    }
+                    catch (Exception ex)
+                    {
+                        AnsiConsole.MarkupLine($"[grey](CH{ch} OVP clear: {Markup.Escape(ex.Message)})[/]");
+                    }
+
+                    try
+                    {
+                        visaSession.FormattedIO.WriteLine($":OUTPut:OCP:CLEAR CH{ch}");
+                    }
+                    catch (Exception ex)
+                    {
+                        AnsiConsole.MarkupLine($"[grey](CH{ch} OCP clear: {Markup.Escape(ex.Message)})[/]");
+                    }
+                }
+                AnsiConsole.MarkupLine("[green]✓[/] Protection trip latches cleared.");
+            }
             else
                 AnsiConsole.MarkupLine("[red]✗[/] Reset command reported errors. Check device state.");
         }
