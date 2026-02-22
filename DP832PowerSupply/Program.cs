@@ -1047,7 +1047,7 @@ namespace DP832PowerSupply
                     }));
 
             // Set the voltage
-            if (SendCommandAndCheckErrors($":SOUR{channelNum}:VOLT {voltage:F3}"))
+            if (SendCommandAndCheckErrors($":SOUR{channelNum}:VOLT {voltage.ToString("F3", CultureInfo.InvariantCulture)}"))
             {
                 // Verify by reading back
                 visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT?");
@@ -1093,7 +1093,7 @@ namespace DP832PowerSupply
                     }));
 
             // Set the current
-            if (SendCommandAndCheckErrors($":SOUR{channelNum}:CURR {current:F3}"))
+            if (SendCommandAndCheckErrors($":SOUR{channelNum}:CURR {current.ToString("F3", CultureInfo.InvariantCulture)}"))
             {
                 // Verify by reading back
                 visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR?");
@@ -1147,7 +1147,7 @@ namespace DP832PowerSupply
                             return ValidationResult.Success();
                         }));
 
-                if (SendCommandAndCheckErrors($":SOUR{channelNum}:VOLT:PROT {ovpLevel:F3}"))
+                if (SendCommandAndCheckErrors($":SOUR{channelNum}:VOLT:PROT {ovpLevel.ToString("F3", CultureInfo.InvariantCulture)}"))
                     AnsiConsole.MarkupLine($"[green]✓[/] OVP level set to: [yellow]{ovpLevel:F3}V[/]");
             }
 
@@ -1212,7 +1212,7 @@ namespace DP832PowerSupply
                             return ValidationResult.Success();
                         }));
 
-                if (SendCommandAndCheckErrors($":SOUR{channelNum}:CURR:PROT {ocpLevel:F3}"))
+                if (SendCommandAndCheckErrors($":SOUR{channelNum}:CURR:PROT {ocpLevel.ToString("F3", CultureInfo.InvariantCulture)}"))
                     AnsiConsole.MarkupLine($"[green]✓[/] OCP level set to: [yellow]{ocpLevel:F3}A[/]");
             }
 
@@ -1335,10 +1335,14 @@ namespace DP832PowerSupply
             table.AddEmptyRow();
 
             // Query output state
-            visaSession.FormattedIO.WriteLine($":OUTPut? CH{channelNum}");
-            string outputStateStr = visaSession.FormattedIO.ReadLine();
-            bool outputEnabled = ParseProtectionState(outputStateStr);
-            table.AddRow("Output State", outputEnabled ? "[green]On[/]" : "[grey]Off[/]", "-");
+            try
+            {
+                visaSession.FormattedIO.WriteLine($":OUTPut? CH{channelNum}");
+                string outputStateStr = visaSession.FormattedIO.ReadLine();
+                bool outputEnabled = ParseProtectionState(outputStateStr);
+                table.AddRow("Output State", outputEnabled ? "[green]On[/]" : "[grey]Off[/]", "-");
+            }
+            catch (Exception) { table.AddRow("Output State", "[red]Error[/]", "-"); }
 
             AnsiConsole.Write(table);
 
