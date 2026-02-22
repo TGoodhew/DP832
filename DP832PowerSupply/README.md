@@ -1,6 +1,6 @@
 # DP832 Power Supply Controller
 
-A console application for controlling the Rigol DP832 programmable DC power supply using SCPI commands over GPIB or TCPIP interfaces.
+A console application for controlling the Rigol DP832 programmable DC power supply using SCPI commands over GPIB, TCPIP (LAN), or USB interfaces via NI-VISA.
 
 ## Prerequisites
 
@@ -50,19 +50,35 @@ Or run directly from Visual Studio (F5).
 
 ## Features
 
-- Configure GPIB/TCPIP device address
+- Configure GPIB, TCPIP (LAN), USB, or custom VISA device address
 - Connect and disconnect from the power supply
 - Query device identification (*IDN?)
 - View connection status and settings
-- Rich console UI powered by Spectre.Console
+- Rich console UI powered by Spectre.Console with ESC key navigation
+- **Channel Controls** for all three channels:
+  - Set voltage and current limits
+  - Configure OVP (Over Voltage Protection) and OCP (Over Current Protection)
+  - View real-time channel status (voltage, current, power, protection state, trip state)
+  - Clear latched OVP/OCP protection trips to restore channel output
+- **Advanced Options**:
+  - Enable/disable channel output (individual channels or all at once)
+  - Configure channel tracking (SYNC/INDE) for CH1/CH2
+  - Enable/disable OTP (Over Temperature Protection)
+  - Enable/disable the instrument beeper
+  - Configure display brightness (1–100%) and screen saver
+- **Save/Load State**:
+  - Save full device configuration to a local text file or device memory slot (1–10)
+  - Restore configuration from a local file or device memory slot
+- **Reset Device**: Reset to factory default state (with automatic OVP/OCP trip latch clearing)
 
 ## Configuration
 
-The default device address is `GPIB0::1::INSTR`. You can change this from the application menu.
+The default device address is `GPIB0::1::INSTR`. You can change this from the application's **Configure Device Address** menu.
 
 ### Connection Examples
-- **GPIB:** `GPIB0::1::INSTR`
-- **TCPIP:** `TCPIP::192.168.1.100::INSTR`
+- **GPIB:** `GPIB0::1::INSTR` (device at GPIB address 1)
+- **TCPIP:** `TCPIP::192.168.1.100::INSTR` (replace with your device's IP)
+- **USB:** `USB0::0x1AB1::0x0E11::DP8XXXXXXXXX::INSTR` (auto-discovered by NI-VISA)
 
 ## Dependencies
 
@@ -73,6 +89,12 @@ The default device address is `GPIB0::1::INSTR`. You can change this from the ap
 
 - **.NET Framework:** 4.7.2
 - **C# Version:** 7.3
+
+## Warnings
+
+> **⚠ Electrical Safety:** The DP832 outputs real DC voltages and currents. Always set appropriate OVP and OCP protection levels before enabling output. Resolve any protection trip condition before clearing it.
+
+> **⚠ Device Reset:** Resetting the device discards all settings. Save state first if you need to restore it.
 
 ## License
 
