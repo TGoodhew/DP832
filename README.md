@@ -21,6 +21,7 @@ This application currently provides:
 - 🎯 **User-Friendly** - Interactive menu-driven interface
 - ⚡ **Channel Control** - Full voltage and current control for all three channels
 - 🛡️ **Protection Controls** - Configure OVP and OCP for safe operation
+- 🔔 **Protection Trip Alerts** - Automatic detection and display of OVP/OCP trip events
 
 ### Current Capabilities
 - Configure and change VISA resource address (GPIB/TCPIP/Custom)
@@ -32,6 +33,9 @@ This application currently provides:
 - **OCP (Over Current Protection)** configuration and control
 - Real-time monitoring of voltage, current, and power readings per channel
 - View detailed channel status with protection settings
+- **Protection trip detection** - OVP/OCP trip state displayed in channel status and current settings views
+- **Protection trip alerts** - Immediate warning when OVP or OCP triggers after enabling protection
+- **Clear protection trips** - Dedicated option to clear latched OVP/OCP trips and restore channel output
 
 ### Planned Features
 The following capabilities are planned for future releases:
@@ -134,7 +138,8 @@ The Channel Controls menu provides access to all three channels (CH1, CH2, CH3) 
 - **Set Current** - Configure current limit (all channels: 0-3A)
 - **Configure OVP** - Set Over Voltage Protection level and enable/disable protection
 - **Configure OCP** - Set Over Current Protection level and enable/disable protection
-- **View Channel Status** - Display real-time voltage, current, power readings and protection settings
+- **View Channel Status** - Display real-time voltage, current, power readings, protection settings, and trip status
+- **Clear Protection Trip** - Clear latched OVP/OCP trip conditions to restore channel output
 
 ## SCPI Commands Reference
 
@@ -164,10 +169,14 @@ The DP832 supports standard SCPI commands for control and measurement:
 - `:SOURce<CH>:VOLTage:PROTection?` - Query OVP level
 - `:SOURce<CH>:VOLTage:PROTection:STATe <ON|OFF>` - Enable/disable OVP
 - `:SOURce<CH>:VOLTage:PROTection:STATe?` - Query OVP state
+- `:SOURce<CH>:VOLTage:PROTection:TRIP?` - Query if OVP has tripped (0=not tripped, 1=tripped)
+- `:OUTPut:OVP:CLEar <CH>` - Clear a latched OVP trip for the specified channel
 - `:SOURce<CH>:CURRent:PROTection <value>` - Set OCP level
 - `:SOURce<CH>:CURRent:PROTection?` - Query OCP level
 - `:SOURce<CH>:CURRent:PROTection:STATe <ON|OFF>` - Enable/disable OCP
 - `:SOURce<CH>:CURRent:PROTection:STATe?` - Query OCP state
+- `:SOURce<CH>:CURRent:PROTection:TRIP?` - Query if OCP has tripped (0=not tripped, 1=tripped)
+- `:OUTPut:OCP:CLEar <CH>` - Clear a latched OCP trip for the specified channel
 
 ### Power Measurement
 - `:MEASure:POWEr? <CH>` - Measure output power

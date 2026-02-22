@@ -464,8 +464,10 @@ namespace DP832PowerSupply
                 double[] power = new double[3];
                 double[] ovpLevels = new double[3];
                 bool[] ovpEnabled = new bool[3];
+                bool[] ovpTripped = new bool[3];
                 double[] ocpLevels = new double[3];
                 bool[] ocpEnabled = new bool[3];
+                bool[] ocpTripped = new bool[3];
                 bool[] outputEnabled = new bool[3];
                 bool[] channelErrors = new bool[3];
                 
@@ -506,6 +508,10 @@ namespace DP832PowerSupply
                         visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:STAT?");
                         string ovpStateStr = visaSession.FormattedIO.ReadLine();
                         ovpEnabled[i] = ParseProtectionState(ovpStateStr);
+
+                        visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:TRIP?");
+                        string ovpTripStr = visaSession.FormattedIO.ReadLine();
+                        ovpTripped[i] = ParseProtectionState(ovpTripStr);
                         
                         // Query OCP settings
                         visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT?");
@@ -515,6 +521,10 @@ namespace DP832PowerSupply
                         visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:STAT?");
                         string ocpStateStr = visaSession.FormattedIO.ReadLine();
                         ocpEnabled[i] = ParseProtectionState(ocpStateStr);
+
+                        visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:TRIP?");
+                        string ocpTripStr = visaSession.FormattedIO.ReadLine();
+                        ocpTripped[i] = ParseProtectionState(ocpTripStr);
                         
                         // Query output state
                         visaSession.FormattedIO.WriteLine($":OUTPut? CH{channelNum}");
@@ -580,6 +590,13 @@ namespace DP832PowerSupply
                 );
                 
                 channelTable.AddRow(
+                    "OVP Tripped",
+                    channelErrors[0] ? "[red]Error[/]" : (ovpTripped[0] ? "[red]Yes[/]" : "[grey]No[/]"),
+                    channelErrors[1] ? "[red]Error[/]" : (ovpTripped[1] ? "[red]Yes[/]" : "[grey]No[/]"),
+                    channelErrors[2] ? "[red]Error[/]" : (ovpTripped[2] ? "[red]Yes[/]" : "[grey]No[/]")
+                );
+                
+                channelTable.AddRow(
                     "OCP Level",
                     channelErrors[0] ? "[red]Error[/]" : $"[yellow]{ocpLevels[0]:F3}A[/]",
                     channelErrors[1] ? "[red]Error[/]" : $"[yellow]{ocpLevels[1]:F3}A[/]",
@@ -591,6 +608,13 @@ namespace DP832PowerSupply
                     channelErrors[0] ? "[red]Error[/]" : (ocpEnabled[0] ? "[green]Enabled[/]" : "[red]Disabled[/]"),
                     channelErrors[1] ? "[red]Error[/]" : (ocpEnabled[1] ? "[green]Enabled[/]" : "[red]Disabled[/]"),
                     channelErrors[2] ? "[red]Error[/]" : (ocpEnabled[2] ? "[green]Enabled[/]" : "[red]Disabled[/]")
+                );
+                
+                channelTable.AddRow(
+                    "OCP Tripped",
+                    channelErrors[0] ? "[red]Error[/]" : (ocpTripped[0] ? "[red]Yes[/]" : "[grey]No[/]"),
+                    channelErrors[1] ? "[red]Error[/]" : (ocpTripped[1] ? "[red]Yes[/]" : "[grey]No[/]"),
+                    channelErrors[2] ? "[red]Error[/]" : (ocpTripped[2] ? "[red]Yes[/]" : "[grey]No[/]")
                 );
                 
                 channelTable.AddEmptyRow();
@@ -772,6 +796,106 @@ namespace DP832PowerSupply
         Console.ReadKey(true);
     }
 
+    /// <summary>
+    /// Queries OVP and OCP trip status for the specified channel and displays
+    /// a warning if either protection has tripped.
+    /// Returns true if any protection is tripped.
+    /// </summary>
+    static bool CheckAndWarnProtectionTrips(int channelNum)
+    {
+        bool anyTrip = false;
+        try
+        {
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:TRIP?");
+            string ovpTripStr = visaSession.FormattedIO.ReadLine();
+            bool ovpTripped = ParseProtectionState(ovpTripStr);
+
+            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:TRIP?");
+            string ocpTripStr = visaSession.FormattedIO.ReadLine();
+            bool ocpTripped = ParseProtectionState(ocpTripStr);
+
+            if (ovpTripped)
+            {
+                AnsiConsole.MarkupLine($"[red]⚠ OVP TRIPPED on CH{channelNum}![/] The channel output has been turned off.");
+                anyTrip = true;
+            }
+            if (ocpTripped)
+            {
+                AnsiConsole.MarkupLine($"[red]⚠ OCP TRIPPED on CH{channelNum}![/] The channel output has been turned off.");
+                anyTrip = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[yellow]⚠[/] Unable to check protection trip status: {Markup.Escape(ex.Message)}");
+        }
+        return anyTrip;
+    }
+
+    /// <summary>
+    /// Checks and clears any tripped OVP or OCP protection for the specified channel.
+    /// Uses :OUTPut:OVP:CLEar and :OUTPut:OCP:CLEar SCPI commands.
+    /// </summary>
+    static void ClearProtectionTrips(int channelNum)
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine($"[bold cyan]Clear Protection Trip for CH{channelNum}[/]");
+        AnsiConsole.WriteLine();
+
+        try
+        {
+            bool ovpTripped = false;
+            bool ocpTripped = false;
+
+            try
+            {
+                visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:TRIP?");
+                ovpTripped = ParseProtectionState(visaSession.FormattedIO.ReadLine());
+            }
+            catch { /* Trip query failure defaults to not tripped; other fields remain valid */ }
+
+            try
+            {
+                visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:TRIP?");
+                ocpTripped = ParseProtectionState(visaSession.FormattedIO.ReadLine());
+            }
+            catch { /* Trip query failure defaults to not tripped; other fields remain valid */ }
+
+            if (!ovpTripped && !ocpTripped)
+            {
+                AnsiConsole.MarkupLine($"[grey]No protection trips detected on CH{channelNum}.[/]");
+                return;
+            }
+
+            if (ovpTripped)
+            {
+                if (SendCommandAndCheckErrors($":OUTPut:OVP:CLEar CH{channelNum}"))
+                    AnsiConsole.MarkupLine($"[green]✓[/] OVP trip cleared for CH{channelNum}.");
+            }
+            else
+            {
+                AnsiConsole.MarkupLine($"[grey]OVP is not tripped on CH{channelNum}.[/]");
+            }
+
+            if (ocpTripped)
+            {
+                if (SendCommandAndCheckErrors($":OUTPut:OCP:CLEar CH{channelNum}"))
+                    AnsiConsole.MarkupLine($"[green]✓[/] OCP trip cleared for CH{channelNum}.");
+            }
+            else
+            {
+                AnsiConsole.MarkupLine($"[grey]OCP is not tripped on CH{channelNum}.[/]");
+            }
+
+            AnsiConsole.MarkupLine($"[green]✓[/] Protection trips cleared. You can now re-enable the channel output.");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]✗ Error clearing protection trip:[/] {Markup.Escape(ex.Message)}");
+            PauseOnError();
+        }
+    }
+
     static void ChannelControlsMenu()
     {
         if (visaSession == null)
@@ -839,6 +963,7 @@ namespace DP832PowerSupply
                     "Configure OVP (Over Voltage Protection)",
                     "Configure OCP (Over Current Protection)",
                     "View Channel Status",
+                    "Clear Protection Trip",
                     "Back to Channel Selection"
                 });
 
@@ -862,6 +987,9 @@ namespace DP832PowerSupply
                     break;
                 case "View Channel Status":
                     ViewChannelStatus(channelNum);
+                    break;
+                case "Clear Protection Trip":
+                    ClearProtectionTrips(channelNum);
                     break;
             }
 
@@ -1010,6 +1138,13 @@ namespace DP832PowerSupply
             
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:STAT {(enableOvp ? "ON" : "OFF")}");
             AnsiConsole.MarkupLine($"[green]✓[/] OVP {(enableOvp ? "[green]enabled[/]" : "[red]disabled[/]")}");
+
+            if (enableOvp)
+            {
+                AnsiConsole.WriteLine();
+                if (CheckAndWarnProtectionTrips(channelNum))
+                    AnsiConsole.MarkupLine("[grey]To clear the trip and re-enable output, use 'Clear Protection Trip' from the channel menu.[/]");
+            }
         }
         catch (Exception ex)
         {
@@ -1066,6 +1201,13 @@ namespace DP832PowerSupply
             
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:STAT {(enableOcp ? "ON" : "OFF")}");
             AnsiConsole.MarkupLine($"[green]✓[/] OCP {(enableOcp ? "[green]enabled[/]" : "[red]disabled[/]")}");
+
+            if (enableOcp)
+            {
+                AnsiConsole.WriteLine();
+                if (CheckAndWarnProtectionTrips(channelNum))
+                    AnsiConsole.MarkupLine("[grey]To clear the trip and re-enable output, use 'Clear Protection Trip' from the channel menu.[/]");
+            }
         }
         catch (Exception ex)
         {
@@ -1133,6 +1275,16 @@ namespace DP832PowerSupply
             table.AddRow("OVP Level", $"[yellow]{ovpLevel:F3}V[/]", "-");
             table.AddRow("OVP State", ovpEnabled ? "[green]Enabled[/]" : "[red]Disabled[/]", "-");
 
+            // Query OVP trip status
+            bool ovpTripped = false;
+            try
+            {
+                visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:TRIP?");
+                ovpTripped = ParseProtectionState(visaSession.FormattedIO.ReadLine());
+            }
+            catch { /* Trip query failure defaults to not tripped; other fields remain valid */ }
+            table.AddRow("OVP Tripped", ovpTripped ? "[red]Yes[/]" : "[grey]No[/]", "-");
+
             // Query OCP settings
             visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT?");
             string ocpLevelStr = visaSession.FormattedIO.ReadLine();
@@ -1145,7 +1297,24 @@ namespace DP832PowerSupply
             table.AddRow("OCP Level", $"[yellow]{ocpLevel:F3}A[/]", "-");
             table.AddRow("OCP State", ocpEnabled ? "[green]Enabled[/]" : "[red]Disabled[/]", "-");
 
+            // Query OCP trip status
+            bool ocpTripped = false;
+            try
+            {
+                visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:TRIP?");
+                ocpTripped = ParseProtectionState(visaSession.FormattedIO.ReadLine());
+            }
+            catch { /* Trip query failure defaults to not tripped; other fields remain valid */ }
+            table.AddRow("OCP Tripped", ocpTripped ? "[red]Yes[/]" : "[grey]No[/]", "-");
+
             AnsiConsole.Write(table);
+
+            if (ovpTripped || ocpTripped)
+            {
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine("[red]⚠ One or more protection trips detected![/] The channel output has been turned off.");
+                AnsiConsole.MarkupLine("[grey]Use 'Clear Protection Trip' from the channel menu to clear the trip and re-enable output.[/]");
+            }
         }
         catch (Exception ex)
         {
