@@ -5,13 +5,21 @@ using System.Globalization;
 
 namespace DP832PowerSupply
 {
+    /// <summary>
+    /// Entry point and controller for the DP832 Power Supply Controller console application.
+    /// Manages the user interface, device connection, and SCPI command dispatch.
+    /// </summary>
     class Program
     {
         private static string deviceAddress = "GPIB0::1::INSTR"; // Default GPIB address
         private static ResourceManager resourceManager;
         private static MessageBasedSession visaSession;
-        private const string AnsiClearToEndOfScreen = "\x1b[0J";
+        private const string AnsiClearToEndOfScreen = "\x1b[0J"; // ANSI escape sequence: clear from cursor to end of screen
 
+    /// <summary>
+    /// Application entry point. Displays the title and description, then enters the
+    /// main menu loop until the user chooses to exit.
+    /// </summary>
     static void Main(string[] args)
     {
         ShowTitle();
@@ -88,6 +96,9 @@ namespace DP832PowerSupply
         AnsiConsole.WriteLine();
     }
 
+    /// <summary>
+    /// Displays a panel describing the application's purpose and supported features.
+    /// </summary>
     static void ShowDescription()
     {
         var panel = new Panel(
@@ -211,6 +222,10 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Displays the main menu, showing the current device address and connection status.
+    /// </summary>
+    /// <returns>The menu item selected by the user, or "Exit" if Esc is pressed.</returns>
     static string ShowMainMenu()
     {
         var connectionStatus = visaSession != null ? "[green]Connected[/]" : "[red]Disconnected[/]";
@@ -236,6 +251,10 @@ namespace DP832PowerSupply
         return selection ?? "Exit";
     }
 
+    /// <summary>
+    /// Prompts the user to select a connection type (GPIB, TCPIP, or Custom) and
+    /// updates the device address used for subsequent connections.
+    /// </summary>
     static void ConfigureDeviceAddress()
     {
         AnsiConsole.WriteLine();
@@ -332,6 +351,10 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Opens a VISA session to the configured device address and queries *IDN?
+    /// to verify the connection. Displays an error message if the connection fails.
+    /// </summary>
     static void ConnectToDevice()
     {
         if (visaSession != null)
@@ -387,6 +410,10 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Closes and disposes the active VISA session and resource manager.
+    /// Does nothing if no session is currently open.
+    /// </summary>
     static void DisconnectFromDevice()
     {
         if (visaSession == null)
@@ -410,6 +437,11 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Displays the current connection settings, and if connected, queries and shows all
+    /// channel parameters (voltage, current, power, OVP, OCP, output state) and
+    /// system-level settings in formatted tables.
+    /// </summary>
     static void ShowCurrentSettings()
     {
         AnsiConsole.WriteLine();
@@ -728,6 +760,12 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Delegates to <see cref="DeviceHelpers.ParseProtectionState"/> to parse a
+    /// SCPI protection or output state response string to a boolean.
+    /// </summary>
+    /// <param name="stateStr">The raw SCPI response string (e.g., "ON", "OFF", "1", "YES").</param>
+    /// <returns><see langword="true"/> if the state is enabled; otherwise <see langword="false"/>.</returns>
     static bool ParseProtectionState(string stateStr)
     {
         return DeviceHelpers.ParseProtectionState(stateStr);
@@ -796,6 +834,11 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Displays a "Press any key to continue" prompt and waits for a keypress.
+    /// Called after error messages to give the user time to read them before
+    /// the screen is refreshed.
+    /// </summary>
     static void PauseOnError()
     {
         AnsiConsole.WriteLine();
@@ -914,6 +957,10 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Displays the channel selection menu, then opens the per-channel control sub-menu
+    /// for the chosen channel. Requires an active device connection.
+    /// </summary>
     static void ChannelControlsMenu()
     {
         if (visaSession == null)
@@ -958,6 +1005,11 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Displays the control sub-menu for the specified channel, allowing the user to set
+    /// voltage/current limits, configure OVP/OCP protection, view status, or clear trips.
+    /// </summary>
+    /// <param name="channelNum">The 1-based channel number (1, 2, or 3).</param>
     static void ChannelControlSubMenu(int channelNum)
     {
         string channelName = $"CH{channelNum}";
@@ -1018,6 +1070,12 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Prompts the user for a voltage setpoint, sends it to the device via :SOUR&lt;n&gt;:VOLT,
+    /// and confirms the new value by reading it back.
+    /// </summary>
+    /// <param name="channelNum">The 1-based channel number (1, 2, or 3).</param>
+    /// <param name="maxVoltage">The maximum allowable voltage for the channel in volts.</param>
     static void SetChannelVoltage(int channelNum, double maxVoltage)
     {
         AnsiConsole.WriteLine();
@@ -1064,6 +1122,12 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Prompts the user for a current limit, sends it to the device via :SOUR&lt;n&gt;:CURR,
+    /// and confirms the new value by reading it back.
+    /// </summary>
+    /// <param name="channelNum">The 1-based channel number (1, 2, or 3).</param>
+    /// <param name="maxCurrent">The maximum allowable current for the channel in amps.</param>
     static void SetChannelCurrent(int channelNum, double maxCurrent)
     {
         AnsiConsole.WriteLine();
@@ -1110,6 +1174,13 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Queries, displays, and optionally updates the OVP (Over Voltage Protection) level
+    /// and enabled state for the specified channel.
+    /// </summary>
+    /// <param name="channelNum">The 1-based channel number (1, 2, or 3).</param>
+    /// <param name="maxVoltage">The maximum rated voltage for the channel, used to calculate
+    /// the allowable OVP range (0.01 V to maxVoltage + 1 V).</param>
     static void ConfigureOVP(int channelNum, double maxVoltage)
     {
         AnsiConsole.WriteLine();
@@ -1175,6 +1246,13 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Queries, displays, and optionally updates the OCP (Over Current Protection) level
+    /// and enabled state for the specified channel.
+    /// </summary>
+    /// <param name="channelNum">The 1-based channel number (1, 2, or 3).</param>
+    /// <param name="maxCurrent">The maximum rated current for the channel, used to calculate
+    /// the allowable OCP range (0.001 A to maxCurrent + 1 A).</param>
     static void ConfigureOCP(int channelNum, double maxCurrent)
     {
         AnsiConsole.WriteLine();
@@ -1240,6 +1318,12 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Queries and displays all settings and measurements for the specified channel,
+    /// including voltage, current, power, OVP/OCP configuration and trip status,
+    /// and output state.
+    /// </summary>
+    /// <param name="channelNum">The 1-based channel number (1, 2, or 3).</param>
     static void ViewChannelStatus(int channelNum)
     {
         AnsiConsole.WriteLine();
@@ -1360,6 +1444,10 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Displays the advanced options menu, providing access to output state, channel
+    /// tracking, OTP, beeper, and display settings. Requires an active device connection.
+    /// </summary>
     static void AdvancedOptionsMenu()
     {
         if (visaSession == null)
@@ -1414,6 +1502,10 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Queries and displays the current output state for all channels, then prompts
+    /// the user to enable or disable the output for a selected channel or all channels.
+    /// </summary>
     static void ConfigureOutputState()
     {
         AnsiConsole.WriteLine();
@@ -1488,6 +1580,10 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Queries and displays the current tracking configuration, then allows the user
+    /// to set the track mode (SYNC/INDE) or toggle per-channel tracking for CH1 and CH2.
+    /// </summary>
     static void ConfigureTracking()
     {
         AnsiConsole.WriteLine();
@@ -1559,6 +1655,10 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Queries the current OTP (Over Temperature Protection) state and prompts the user
+    /// to enable or disable it via :SYSTem:OTP.
+    /// </summary>
     static void ConfigureOTP()
     {
         AnsiConsole.WriteLine();
@@ -1585,6 +1685,10 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Queries the current beeper state and prompts the user to enable or disable
+    /// it via :SYSTem:BEEPer.
+    /// </summary>
     static void ConfigureBeeper()
     {
         AnsiConsole.WriteLine();
@@ -1611,6 +1715,10 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Displays the display settings sub-menu, providing access to brightness and
+    /// screen saver configuration.
+    /// </summary>
     static void ConfigureDisplaySettings()
     {
         AnsiConsole.WriteLine();
@@ -1645,6 +1753,10 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Queries the current display brightness and prompts the user to enter a new value
+    /// (1–100%), then applies it via :SYSTem:BRIGhtness.
+    /// </summary>
     static void ConfigureDisplayBrightness()
     {
         AnsiConsole.WriteLine();
@@ -1684,6 +1796,11 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Queries the current screen saver state and prompts the user to enable or disable
+    /// it via :SYSTem:SAVer. When enabled, the screen saver activates after 25 minutes
+    /// of standby.
+    /// </summary>
     static void ConfigureScreenSaver()
     {
         AnsiConsole.WriteLine();
@@ -1711,6 +1828,10 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Displays the save/load state menu, providing options to save or load the device
+    /// state to/from a local file or device memory. Requires an active device connection.
+    /// </summary>
     static void SaveLoadStateMenu()
     {
         if (visaSession == null)
@@ -1761,6 +1882,10 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Queries all channel and system settings from the device and writes them to a
+    /// user-specified text file in key=value format, with comment-line headers.
+    /// </summary>
     static void SaveStateToFile()
     {
         AnsiConsole.WriteLine();
@@ -1895,6 +2020,10 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Reads a previously saved key=value state file and applies each setting to the
+    /// device via SCPI commands after user confirmation.
+    /// </summary>
     static void LoadStateFromFile()
     {
         AnsiConsole.WriteLine();
@@ -2050,6 +2179,10 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Prompts the user for a memory slot number (1–10) and saves the current device
+    /// state to that slot using the *SAV IEEE 488.2 command.
+    /// </summary>
     static void SaveStateToDevice()
     {
         AnsiConsole.WriteLine();
@@ -2080,6 +2213,10 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Prompts the user for a memory slot number (1–10) and recalls the saved device
+    /// state from that slot using the *RCL IEEE 488.2 command.
+    /// </summary>
     static void LoadStateFromDevice()
     {
         AnsiConsole.WriteLine();
@@ -2117,6 +2254,11 @@ namespace DP832PowerSupply
         }
     }
 
+    /// <summary>
+    /// Prompts the user for confirmation, then resets the device to its factory default
+    /// state using the *RST IEEE 488.2 command. Also clears OVP and OCP trip latches on
+    /// all channels, which *RST does not automatically clear.
+    /// </summary>
     static void ResetDevice()
     {
         AnsiConsole.WriteLine();
