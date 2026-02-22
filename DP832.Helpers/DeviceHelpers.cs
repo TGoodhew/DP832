@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 
-namespace DP832PowerSupply
+namespace DP832.Helpers
 {
     /// <summary>
     /// Pure helper methods for the DP832 Power Supply Controller.

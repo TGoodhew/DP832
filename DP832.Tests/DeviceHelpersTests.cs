@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using DP832PowerSupply;
+using DP832.Helpers;
 using Xunit;
 
 namespace DP832.Tests

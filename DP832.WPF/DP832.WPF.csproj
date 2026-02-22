@@ -1,14 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net472</TargetFramework>
     <LangVersion>7.3</LangVersion>
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Spectre.Console" Version="0.54.0" />
-  </ItemGroup>
 
   <ItemGroup>
     <Reference Include="Ivi.Visa">
