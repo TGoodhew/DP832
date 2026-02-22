@@ -508,10 +508,6 @@ namespace DP832PowerSupply
                         visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:STAT?");
                         string ovpStateStr = visaSession.FormattedIO.ReadLine();
                         ovpEnabled[i] = ParseProtectionState(ovpStateStr);
-
-                        visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:TRIP?");
-                        string ovpTripStr = visaSession.FormattedIO.ReadLine();
-                        ovpTripped[i] = ParseProtectionState(ovpTripStr);
                         
                         // Query OCP settings
                         visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT?");
@@ -521,10 +517,6 @@ namespace DP832PowerSupply
                         visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:STAT?");
                         string ocpStateStr = visaSession.FormattedIO.ReadLine();
                         ocpEnabled[i] = ParseProtectionState(ocpStateStr);
-
-                        visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:TRIP?");
-                        string ocpTripStr = visaSession.FormattedIO.ReadLine();
-                        ocpTripped[i] = ParseProtectionState(ocpTripStr);
                         
                         // Query output state
                         visaSession.FormattedIO.WriteLine($":OUTPut? CH{channelNum}");
@@ -535,6 +527,21 @@ namespace DP832PowerSupply
                     {
                         channelErrors[i] = true;
                     }
+
+                    // Query trip status separately so a failure here does not mark the whole channel as error
+                    try
+                    {
+                        visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:TRIP?");
+                        ovpTripped[i] = ParseProtectionState(visaSession.FormattedIO.ReadLine());
+                    }
+                    catch (Exception) { /* Trip query failure defaults to not tripped; other channel data remains valid */ }
+
+                    try
+                    {
+                        visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:TRIP?");
+                        ocpTripped[i] = ParseProtectionState(visaSession.FormattedIO.ReadLine());
+                    }
+                    catch (Exception) { /* Trip query failure defaults to not tripped; other channel data remains valid */ }
                 }
                 
                 // Build the table rows
@@ -852,14 +859,14 @@ namespace DP832PowerSupply
                 visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:TRIP?");
                 ovpTripped = ParseProtectionState(visaSession.FormattedIO.ReadLine());
             }
-            catch { /* Trip query failure defaults to not tripped; other fields remain valid */ }
+            catch (Exception) { /* Trip query failure defaults to not tripped; other fields remain valid */ }
 
             try
             {
                 visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:TRIP?");
                 ocpTripped = ParseProtectionState(visaSession.FormattedIO.ReadLine());
             }
-            catch { /* Trip query failure defaults to not tripped; other fields remain valid */ }
+            catch (Exception) { /* Trip query failure defaults to not tripped; other fields remain valid */ }
 
             if (!ovpTripped && !ocpTripped)
             {
@@ -1282,7 +1289,7 @@ namespace DP832PowerSupply
                 visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:TRIP?");
                 ovpTripped = ParseProtectionState(visaSession.FormattedIO.ReadLine());
             }
-            catch { /* Trip query failure defaults to not tripped; other fields remain valid */ }
+            catch (Exception) { /* Trip query failure defaults to not tripped; other fields remain valid */ }
             table.AddRow("OVP Tripped", ovpTripped ? "[red]Yes[/]" : "[grey]No[/]", "-");
 
             // Query OCP settings
@@ -1304,7 +1311,7 @@ namespace DP832PowerSupply
                 visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:TRIP?");
                 ocpTripped = ParseProtectionState(visaSession.FormattedIO.ReadLine());
             }
-            catch { /* Trip query failure defaults to not tripped; other fields remain valid */ }
+            catch (Exception) { /* Trip query failure defaults to not tripped; other fields remain valid */ }
             table.AddRow("OCP Tripped", ocpTripped ? "[red]Yes[/]" : "[grey]No[/]", "-");
 
             AnsiConsole.Write(table);

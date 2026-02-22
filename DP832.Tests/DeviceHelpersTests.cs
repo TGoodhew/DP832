@@ -15,6 +15,10 @@ namespace DP832.Tests
         [InlineData("1",     true)]
         [InlineData(" ON ",  true)]   // leading/trailing whitespace
         [InlineData(" 1 ",   true)]
+        [InlineData("YES",   true)]   // TRIPped? queries return YES/NO
+        [InlineData("yes",   true)]
+        [InlineData("Yes",   true)]
+        [InlineData(" YES ", true)]   // leading/trailing whitespace
         public void ParseProtectionState_EnabledValues_ReturnsTrue(string input, bool expected)
         {
             Assert.Equal(expected, DeviceHelpers.ParseProtectionState(input));
@@ -27,7 +31,9 @@ namespace DP832.Tests
         [InlineData(" OFF ", false)]  // leading/trailing whitespace
         [InlineData("",      false)]
         [InlineData("2",     false)]
-        [InlineData("TRUE",  false)]  // only "ON" and "1" are truthy
+        [InlineData("TRUE",  false)]  // only "ON", "1", and "YES" are truthy
+        [InlineData("NO",    false)]  // TRIPped? queries return YES/NO; NO maps to false
+        [InlineData("no",    false)]
         public void ParseProtectionState_DisabledValues_ReturnsFalse(string input, bool expected)
         {
             Assert.Equal(expected, DeviceHelpers.ParseProtectionState(input));

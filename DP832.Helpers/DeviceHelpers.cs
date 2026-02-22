@@ -12,12 +12,16 @@ namespace DP832PowerSupply
     {
         /// <summary>
         /// Parses a SCPI protection/output state response string to a boolean.
-        /// "ON" (case-insensitive) and "1" map to true; everything else maps to false.
+        /// "ON" (case-insensitive), "1", and "YES" (case-insensitive) map to true;
+        /// everything else maps to false.
+        /// Note: TRIPped? queries return "YES"/"NO"; STATe? queries return "ON"/"OFF" or "1"/"0".
         /// </summary>
         public static bool ParseProtectionState(string stateStr)
         {
             string trimmedState = stateStr.Trim();
-            return trimmedState.Equals("ON", StringComparison.OrdinalIgnoreCase) || trimmedState == "1";
+            return trimmedState.Equals("ON", StringComparison.OrdinalIgnoreCase)
+                || trimmedState == "1"
+                || trimmedState.Equals("YES", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
