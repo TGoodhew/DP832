@@ -699,8 +699,7 @@ namespace DP832PowerSupply
 
     static bool ParseProtectionState(string stateStr)
     {
-        string trimmedState = stateStr.Trim();
-        return trimmedState.Equals("ON", StringComparison.OrdinalIgnoreCase) || trimmedState == "1";
+        return DeviceHelpers.ParseProtectionState(stateStr);
     }
 
     /// <summary>
@@ -822,8 +821,8 @@ namespace DP832PowerSupply
         string channelName = $"CH{channelNum}";
         
         // Get max voltage based on channel
-        double maxVoltage = (channelNum == 3) ? 5.0 : 30.0;
-        double maxCurrent = 3.0;
+        double maxVoltage = DeviceHelpers.GetChannelMaxVoltage(channelNum);
+        double maxCurrent = DeviceHelpers.GetChannelMaxCurrent();
 
         bool exitSubMenu = false;
         while (!exitSubMenu)
@@ -1713,17 +1712,7 @@ namespace DP832PowerSupply
                 return;
             }
 
-            var settings = new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (string line in System.IO.File.ReadAllLines(filePath))
-            {
-                string trimmed = line.Trim();
-                if (trimmed.StartsWith("#", StringComparison.Ordinal) || !trimmed.Contains("="))
-                    continue;
-                int eqIdx = trimmed.IndexOf('=');
-                string key = trimmed.Substring(0, eqIdx).Trim();
-                string val = trimmed.Substring(eqIdx + 1).Trim();
-                settings[key] = val;
-            }
+            var settings = DeviceHelpers.ParseStateFile(System.IO.File.ReadAllLines(filePath));
 
             AnsiConsole.MarkupLine("[yellow]⚠ This will overwrite current device settings.[/]");
             if (!AnsiConsole.Confirm("Apply loaded state to device?", false))

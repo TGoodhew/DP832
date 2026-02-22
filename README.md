@@ -174,6 +174,81 @@ The DP832 supports standard SCPI commands for control and measurement:
 
 Where `<CH>` can be CH1, CH2, or CH3 for the three channels.
 
+## Unit Tests
+
+The solution includes a hardware-free unit test suite that runs on any platform without NI-VISA or a physical DP832 device.
+
+### Test Projects
+
+| Project | Framework | Purpose |
+|---------|-----------|---------|
+| `DP832.Helpers` | `netstandard2.0` | Pure helper library extracted from the main app |
+| `DP832.Tests` | `net8.0` | xUnit test project targeting the helpers library |
+
+The `DP832.Helpers` library contains all pure business logic (parsing, validation, address formatting) with no dependencies on NI-VISA or Spectre.Console, making it fully testable on Linux/macOS CI runners.
+
+### Prerequisites for Running Tests
+
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (or later) — **NI-VISA is not required**
+
+### Running the Tests
+
+#### Command Line
+
+```bash
+# From the repository root — run all tests
+dotnet test DP832.Tests/DP832.Tests.csproj
+
+# With detailed output (shows each test name and pass/fail)
+dotnet test DP832.Tests/DP832.Tests.csproj -v normal
+
+# With code coverage report
+dotnet test DP832.Tests/DP832.Tests.csproj --collect:"XPlat Code Coverage"
+```
+
+#### Visual Studio
+
+1. Open `DP832.sln`
+2. Open the **Test Explorer** panel (`Test → Test Explorer`)
+3. Click **Run All Tests** (or press Ctrl+R, A)
+
+#### Visual Studio Code
+
+1. Install the [.NET Test Explorer extension](https://marketplace.visualstudio.com/items?itemName=formulahendry.dotnet-test-explorer)
+2. Open the repository root folder
+3. Tests will appear automatically in the Testing panel
+
+### What Is Tested
+
+The test suite covers the following helpers in `DP832.Helpers/DeviceHelpers.cs`:
+
+| Method | What is verified |
+|--------|-----------------|
+| `ParseProtectionState` | `ON` / `on` / `On` / `1` / ` ON ` → `true`; `OFF` / `0` / `""` / `TRUE` → `false` |
+| `GetChannelMaxVoltage` | CH1=30V, CH2=30V, CH3=5V |
+| `GetChannelMaxCurrent` | All channels return 3A |
+| `IsValidVoltage` | Boundary and out-of-range values per channel |
+| `IsValidCurrent` | Boundary and out-of-range values |
+| `IsValidOvpLevel` | Valid range is 0.01 V to maxVoltage+1 V per channel |
+| `IsValidOcpLevel` | Valid range is 0.001 A to 4.0 A |
+| `FormatGpibAddress` | Produces `GPIB0::<n>::INSTR` |
+| `FormatTcpipAddress` | Produces `TCPIP::<ip>::INSTR` |
+| `ParseStateFile` | Key=value parsing, skips `#` comments and blank lines, case-insensitive keys, values containing `=` |
+
+### Expected Output
+
+A successful test run looks like:
+
+```
+Passed!  - Failed: 0, Passed: 54, Skipped: 0, Total: 54, Duration: ~40 ms
+```
+
+### Adding New Tests
+
+1. Add a new test class to `DP832.Tests/` (or add methods to `DeviceHelpersTests.cs`)
+2. If the logic to test lives in `Program.cs` and is tightly coupled to VISA/Spectre.Console, first extract it into a public static method in `DP832.Helpers/DeviceHelpers.cs`
+3. Reference the new helper from `Program.cs` and add corresponding xUnit `[Fact]` or `[Theory]` tests
+
 ## Project Structure
 
 ```
@@ -183,6 +258,12 @@ DP832/
 │   ├── Program.cs                 # Main application code
 │   ├── DP832PowerSupply.csproj   # Project file (.NET Framework 4.7.2, C# 7.3)
 │   └── README.md                  # Project-specific documentation
+├── DP832.Helpers/                 # Hardware-free helper library (netstandard2.0)
+│   ├── DeviceHelpers.cs           # Pure business logic (parsing, validation, formatting)
+│   └── DP832.Helpers.csproj      # Project file
+├── DP832.Tests/                   # Unit test project (net8.0, xUnit)
+│   ├── DeviceHelpersTests.cs      # 54 unit tests for DeviceHelpers
+│   └── DP832.Tests.csproj        # Project file
 ├── README.md                      # This file
 ├── LICENSE                        # License information
 └── DP832.pdf                      # Device manual
