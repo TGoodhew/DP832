@@ -65,7 +65,7 @@ Or run directly from Visual Studio (F5).
   - Configure channel tracking (SYNC/INDE) for CH1/CH2
   - Enable/disable OTP (Over Temperature Protection)
   - Enable/disable the instrument beeper
-  - Configure display brightness (1–8) and screen saver
+  - Configure display brightness (1–100%) and screen saver
 - **Save/Load State**:
   - Save full device configuration to a local text file or device memory slot (1–10)
   - Restore configuration from a local file or device memory slot

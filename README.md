@@ -165,7 +165,7 @@ The Advanced Options menu provides system-level controls:
 - **Configure Tracking** - Set the track mode (`SYNC` for synchronised output or `INDE` for independent output) and toggle per-channel tracking for CH1 and CH2
 - **Configure OTP (Over Temperature Protection)** - Enable or disable the hardware over-temperature protection feature
 - **Configure Beeper** - Enable or disable the instrument's audible beeper
-- **Configure Display Settings** - Set the display brightness (1–8) and enable/disable the screen saver (activates after 25 minutes of standby)
+- **Configure Display Settings** - Set the display brightness (1–100%) and enable/disable the screen saver (activates after 25 minutes of standby)
 
 > **Note:** Advanced Options requires an active connection to the device.
 
@@ -234,7 +234,7 @@ The DP832 supports standard SCPI commands for control and measurement:
 - `:SYSTem:OTP?` - Query OTP state
 - `:SYSTem:BEEPer <ON|OFF>` - Enable/disable the beeper
 - `:SYSTem:BEEPer?` - Query beeper state
-- `:SYSTem:BRIGhtness <1-8>` - Set display brightness
+- `:SYSTem:BRIGhtness <1-100>` - Set display brightness (percentage, 1–100%)
 - `:SYSTem:BRIGhtness?` - Query display brightness
 - `:SYSTem:SAVer <ON|OFF>` - Enable/disable the screen saver (activates after 25 min standby)
 - `:SYSTem:SAVer?` - Query screen saver state
