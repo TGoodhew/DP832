@@ -169,13 +169,13 @@ The DP832 supports standard SCPI commands for control and measurement:
 - `:SOURce<CH>:VOLTage:PROTection?` - Query OVP level
 - `:SOURce<CH>:VOLTage:PROTection:STATe <ON|OFF>` - Enable/disable OVP
 - `:SOURce<CH>:VOLTage:PROTection:STATe?` - Query OVP state
-- `:SOURce<CH>:VOLTage:PROTection:TRIP?` - Query if OVP has tripped (0=not tripped, 1=tripped)
+- `:SOURce<CH>:VOLTage:PROTection:TRIP?` - Query if OVP has tripped (`YES` = tripped, `NO` = not tripped)
 - `:OUTPut:OVP:CLEar <CH>` - Clear a latched OVP trip for the specified channel
 - `:SOURce<CH>:CURRent:PROTection <value>` - Set OCP level
 - `:SOURce<CH>:CURRent:PROTection?` - Query OCP level
 - `:SOURce<CH>:CURRent:PROTection:STATe <ON|OFF>` - Enable/disable OCP
 - `:SOURce<CH>:CURRent:PROTection:STATe?` - Query OCP state
-- `:SOURce<CH>:CURRent:PROTection:TRIP?` - Query if OCP has tripped (0=not tripped, 1=tripped)
+- `:SOURce<CH>:CURRent:PROTection:TRIP?` - Query if OCP has tripped (`YES` = tripped, `NO` = not tripped)
 - `:OUTPut:OCP:CLEar <CH>` - Clear a latched OCP trip for the specified channel
 
 ### Power Measurement

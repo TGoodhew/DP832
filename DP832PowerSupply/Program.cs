@@ -874,27 +874,38 @@ namespace DP832PowerSupply
                 return;
             }
 
+            bool ovpCleared = !ovpTripped; // not tripped = nothing to clear = treated as success
             if (ovpTripped)
             {
-                if (SendCommandAndCheckErrors($":OUTPut:OVP:CLEar CH{channelNum}"))
+                ovpCleared = SendCommandAndCheckErrors($":OUTPut:OVP:CLEar CH{channelNum}");
+                if (ovpCleared)
                     AnsiConsole.MarkupLine($"[green]✓[/] OVP trip cleared for CH{channelNum}.");
+                else
+                    AnsiConsole.MarkupLine($"[red]✗[/] Failed to clear OVP trip for CH{channelNum}.");
             }
             else
             {
                 AnsiConsole.MarkupLine($"[grey]OVP is not tripped on CH{channelNum}.[/]");
             }
 
+            bool ocpCleared = !ocpTripped;
             if (ocpTripped)
             {
-                if (SendCommandAndCheckErrors($":OUTPut:OCP:CLEar CH{channelNum}"))
+                ocpCleared = SendCommandAndCheckErrors($":OUTPut:OCP:CLEar CH{channelNum}");
+                if (ocpCleared)
                     AnsiConsole.MarkupLine($"[green]✓[/] OCP trip cleared for CH{channelNum}.");
+                else
+                    AnsiConsole.MarkupLine($"[red]✗[/] Failed to clear OCP trip for CH{channelNum}.");
             }
             else
             {
                 AnsiConsole.MarkupLine($"[grey]OCP is not tripped on CH{channelNum}.[/]");
             }
 
-            AnsiConsole.MarkupLine($"[green]✓[/] Protection trips cleared. You can now re-enable the channel output.");
+            if (ovpCleared && ocpCleared)
+                AnsiConsole.MarkupLine($"[green]✓[/] Protection trips cleared. You can now re-enable the channel output.");
+            else
+                AnsiConsole.MarkupLine("[yellow]⚠[/] One or more protection trips could not be cleared. Check device state.");
         }
         catch (Exception ex)
         {
@@ -1143,14 +1154,16 @@ namespace DP832PowerSupply
             // Ask if user wants to enable/disable OVP
             var enableOvp = AnsiConsole.Confirm("Enable OVP?", ovpEnabled);
             
-            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:VOLT:PROT:STAT {(enableOvp ? "ON" : "OFF")}");
-            AnsiConsole.MarkupLine($"[green]✓[/] OVP {(enableOvp ? "[green]enabled[/]" : "[red]disabled[/]")}");
-
-            if (enableOvp)
+            if (SendCommandAndCheckErrors($":SOUR{channelNum}:VOLT:PROT:STAT {(enableOvp ? "ON" : "OFF")}"))
             {
-                AnsiConsole.WriteLine();
-                if (CheckAndWarnProtectionTrips(channelNum))
-                    AnsiConsole.MarkupLine("[grey]To clear the trip and re-enable output, use 'Clear Protection Trip' from the channel menu.[/]");
+                AnsiConsole.MarkupLine($"[green]✓[/] OVP {(enableOvp ? "[green]enabled[/]" : "[red]disabled[/]")}");
+
+                if (enableOvp)
+                {
+                    AnsiConsole.WriteLine();
+                    if (CheckAndWarnProtectionTrips(channelNum))
+                        AnsiConsole.MarkupLine("[grey]To clear the trip and re-enable output, use 'Clear Protection Trip' from the channel menu.[/]");
+                }
             }
         }
         catch (Exception ex)
@@ -1206,14 +1219,16 @@ namespace DP832PowerSupply
             // Ask if user wants to enable/disable OCP
             var enableOcp = AnsiConsole.Confirm("Enable OCP?", ocpEnabled);
             
-            visaSession.FormattedIO.WriteLine($":SOUR{channelNum}:CURR:PROT:STAT {(enableOcp ? "ON" : "OFF")}");
-            AnsiConsole.MarkupLine($"[green]✓[/] OCP {(enableOcp ? "[green]enabled[/]" : "[red]disabled[/]")}");
-
-            if (enableOcp)
+            if (SendCommandAndCheckErrors($":SOUR{channelNum}:CURR:PROT:STAT {(enableOcp ? "ON" : "OFF")}"))
             {
-                AnsiConsole.WriteLine();
-                if (CheckAndWarnProtectionTrips(channelNum))
-                    AnsiConsole.MarkupLine("[grey]To clear the trip and re-enable output, use 'Clear Protection Trip' from the channel menu.[/]");
+                AnsiConsole.MarkupLine($"[green]✓[/] OCP {(enableOcp ? "[green]enabled[/]" : "[red]disabled[/]")}");
+
+                if (enableOcp)
+                {
+                    AnsiConsole.WriteLine();
+                    if (CheckAndWarnProtectionTrips(channelNum))
+                        AnsiConsole.MarkupLine("[grey]To clear the trip and re-enable output, use 'Clear Protection Trip' from the channel menu.[/]");
+                }
             }
         }
         catch (Exception ex)
@@ -2116,29 +2131,16 @@ namespace DP832PowerSupply
                 AnsiConsole.MarkupLine("[green]✓[/] Device has been reset to factory default state.");
 
                 // Explicitly clear OVP and OCP trip latches on all channels after reset,
-                // as *RST does not clear these latched conditions.
-                // Each clear is in its own try-catch: the command may return a device
-                // error if no trip was active, and that is expected behaviour.
+                // as *RST does not clear these latched conditions. Use SendCommandAndCheckErrors
+                // so any SCPI/device errors from these clears are detected and handled.
                 AnsiConsole.MarkupLine("[grey]Clearing protection trip latches...[/]");
                 for (int ch = 1; ch <= 3; ch++)
                 {
-                    try
-                    {
-                        visaSession.FormattedIO.WriteLine($":OUTPut:OVP:CLEAR CH{ch}");
-                    }
-                    catch (Exception ex)
-                    {
-                        AnsiConsole.MarkupLine($"[grey](CH{ch} OVP clear: {Markup.Escape(ex.Message)})[/]");
-                    }
+                    if (!SendCommandAndCheckErrors($":OUTPut:OVP:CLEar CH{ch}"))
+                        AnsiConsole.MarkupLine($"[grey](CH{ch} OVP clear reported SCPI/device errors)[/]");
 
-                    try
-                    {
-                        visaSession.FormattedIO.WriteLine($":OUTPut:OCP:CLEAR CH{ch}");
-                    }
-                    catch (Exception ex)
-                    {
-                        AnsiConsole.MarkupLine($"[grey](CH{ch} OCP clear: {Markup.Escape(ex.Message)})[/]");
-                    }
+                    if (!SendCommandAndCheckErrors($":OUTPut:OCP:CLEar CH{ch}"))
+                        AnsiConsole.MarkupLine($"[grey](CH{ch} OCP clear reported SCPI/device errors)[/]");
                 }
                 AnsiConsole.MarkupLine("[green]✓[/] Protection trip latches cleared.");
             }
