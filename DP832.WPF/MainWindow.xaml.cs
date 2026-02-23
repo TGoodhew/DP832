@@ -1,3 +1,4 @@
+using System;
 using System.Windows;
 using DP832.Core;
 using DP832.Helpers;
@@ -20,6 +21,15 @@ namespace DP832.WPF
             InitializeComponent();
         }
 
+        /// <summary>Disposes the device connection when the window is closed.</summary>
+        protected override void OnClosed(EventArgs e)
+        {
+            base.OnClosed(e);
+            if (_device is IDisposable disposable)
+                disposable.Dispose();
+            _device = null;
+        }
+
         private void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
             string address = DeviceAddressBox.Text.Trim();
@@ -29,21 +39,23 @@ namespace DP832.WPF
                 return;
             }
 
+            IDP832Device candidate = new DP832Device(address);
             try
             {
-                _device = new DP832Device(address);
-                _device.Connect();
-                string idn = _device.GetIdentification();
+                candidate.Connect();
+                string idn = candidate.GetIdentification();
+                _device = candidate;
                 StatusText.Text = "Connected: " + idn;
                 StatusBarText.Text = "Connected to " + address;
                 ConnectButton.IsEnabled = false;
                 DisconnectButton.IsEnabled = true;
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
+                if (candidate is IDisposable disposable)
+                    disposable.Dispose();
                 StatusText.Text = "Connection failed: " + ex.Message;
                 StatusBarText.Text = "Connection failed.";
-                _device = null;
             }
         }
 

@@ -250,13 +250,12 @@ Where `<n>` is the channel number (1, 2, or 3) and `<CH>` is the channel name (C
 
 The solution includes a hardware-free unit test suite that runs on any platform without NI-VISA or a physical DP832 device.
 
-### Test Projects
+### Test Architecture
 
-| Project | Framework | Purpose |
-|---------|-----------|---------|
-| `DP832.Helpers` | `netstandard2.0` | Pure helper library with no I/O or hardware dependencies |
-| `DP832.Core` | `net472` | Shared device communication layer (NI-VISA, tested on Windows with hardware) |
-| `DP832.Tests` | `net8.0` | xUnit test project targeting the helpers library |
+| Project | Framework | Role |
+|---------|-----------|------|
+| `DP832.Helpers` | `netstandard2.0` | Production library: pure business logic tested by `DP832.Tests` |
+| `DP832.Tests` | `net8.0` | Test project: xUnit tests targeting `DP832.Helpers` |
 
 The `DP832.Helpers` library contains all pure business logic (parsing, validation, address formatting) with no dependencies on NI-VISA or Spectre.Console, making it fully testable on Linux/macOS CI runners.
 
@@ -378,7 +377,7 @@ DP832/
 ## Technical Details
 
 - **Target Frameworks:**
-  - `DP832PowerSupply` / `DP832.Core` / `DP832.WPF`: .NET Framework 4.7.2 (Windows)
+  - `DP832PowerSupply` / `DP832.Core` / `DP832.WPF` / `DP832.CLI`: .NET Framework 4.7.2 (Windows)
   - `DP832.Helpers`: .NET Standard 2.0 (cross-platform, no hardware dependencies)
   - `DP832.Tests`: .NET 8.0 (cross-platform, runs on Linux/macOS CI)
 - **C# Version:** 7.3

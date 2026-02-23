@@ -41,7 +41,16 @@ namespace DP832.Core
                 return;
 
             _resourceManager = new ResourceManager();
-            _visaSession = (MessageBasedSession)_resourceManager.Open(DeviceAddress);
+            try
+            {
+                _visaSession = (MessageBasedSession)_resourceManager.Open(DeviceAddress);
+            }
+            catch
+            {
+                _resourceManager.Dispose();
+                _resourceManager = null;
+                throw;
+            }
         }
 
         /// <inheritdoc/>
@@ -86,7 +95,8 @@ namespace DP832.Core
         public IList<string> GetErrors()
         {
             var errors = new List<string>();
-            while (true)
+            const int maxErrors = 100;
+            while (errors.Count < maxErrors)
             {
                 string response = SendQuery(":SYSTem:ERRor?");
                 if (response.StartsWith("0,", StringComparison.Ordinal))
