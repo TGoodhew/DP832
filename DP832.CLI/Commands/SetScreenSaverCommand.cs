@@ -9,16 +9,17 @@ using Spectre.Console.Cli;
 namespace DP832.CLI.Commands
 {
     /// <summary>
-    /// Enables or disables the output for the specified DP832 channel.
+    /// Enables or disables the display screen saver via <c>:SYSTem:SAVer</c>.
+    /// When enabled, the screen saver activates after 25 minutes of standby.
     /// Pass <c>--json</c> to receive the result as a JSON object.
     /// </summary>
-    public sealed class OutputCommand : Command<OutputCommand.Settings>
+    public sealed class SetScreenSaverCommand : Command<SetScreenSaverCommand.Settings>
     {
-        /// <summary>Settings for the output command.</summary>
-        public sealed class Settings : ChannelSettings
+        /// <summary>Settings for the set-screensaver command.</summary>
+        public sealed class Settings : DeviceSettings
         {
-            /// <summary>Desired output state: <c>on</c> or <c>off</c>.</summary>
-            [Description("Desired output state: on or off.")]
+            /// <summary>Desired screen saver state: <c>on</c> or <c>off</c>.</summary>
+            [Description("Desired screen saver state: on or off.")]
             [CommandOption("-s|--state")]
             public string State { get; set; }
         }
@@ -35,17 +36,9 @@ namespace DP832.CLI.Commands
             {
                 string msg = "--state must be 'on' or 'off'.";
                 if (settings.Json)
-                {
-                    Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object>
-                    {
-                        { "success", false },
-                        { "error", msg }
-                    }));
-                }
+                    Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object> { { "success", false }, { "error", msg } }));
                 else
-                {
                     AnsiConsole.MarkupLine("[red]Error:[/] " + msg);
-                }
                 return 1;
             }
 
@@ -54,39 +47,28 @@ namespace DP832.CLI.Commands
                 try
                 {
                     device.Connect();
-                    string stateStr = turnOn ? "ON" : "OFF";
-                    device.SendCommand(":OUTPut CH" + settings.Channel + "," + stateStr);
+                    device.SendCommand(":SYSTem:SAVer " + (turnOn ? "ON" : "OFF"));
 
                     if (settings.Json)
                     {
                         Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object>
                         {
                             { "success", true },
-                            { "channel", settings.Channel },
-                            { "state", stateStr }
+                            { "enabled", turnOn }
                         }));
                     }
                     else
                     {
-                        AnsiConsole.MarkupLine(
-                            "[green]CH" + settings.Channel + " output set to " + stateStr + ".[/]");
+                        AnsiConsole.MarkupLine("[green]Screen saver " + (turnOn ? "enabled" : "disabled") + ".[/]");
                     }
                     return 0;
                 }
                 catch (Exception ex)
                 {
                     if (settings.Json)
-                    {
-                        Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object>
-                        {
-                            { "success", false },
-                            { "error", ex.Message }
-                        }));
-                    }
+                        Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object> { { "success", false }, { "error", ex.Message } }));
                     else
-                    {
                         AnsiConsole.MarkupLine("[red]Error:[/] " + Markup.Escape(ex.Message));
-                    }
                     return 1;
                 }
             }

@@ -9,16 +9,23 @@ using Spectre.Console.Cli;
 namespace DP832.CLI.Commands
 {
     /// <summary>
-    /// Enables or disables the output for the specified DP832 channel.
+    /// Enables or disables per-channel output tracking for CH1 or CH2 via <c>:OUTPut:TRACk</c>.
+    /// Only CH1 and CH2 support tracking; CH3 is independent.
     /// Pass <c>--json</c> to receive the result as a JSON object.
     /// </summary>
-    public sealed class OutputCommand : Command<OutputCommand.Settings>
+    public sealed class SetTrackCommand : Command<SetTrackCommand.Settings>
     {
-        /// <summary>Settings for the output command.</summary>
-        public sealed class Settings : ChannelSettings
+        /// <summary>Settings for the set-track command.</summary>
+        public sealed class Settings : DeviceSettings
         {
-            /// <summary>Desired output state: <c>on</c> or <c>off</c>.</summary>
-            [Description("Desired output state: on or off.")]
+            /// <summary>Channel to configure tracking on: 1 or 2.</summary>
+            [Description("Channel to configure tracking on: 1 or 2.")]
+            [CommandOption("-c|--channel")]
+            [DefaultValue(1)]
+            public int Channel { get; set; }
+
+            /// <summary>Desired tracking state: <c>on</c> or <c>off</c>.</summary>
+            [Description("Desired tracking state: on or off.")]
             [CommandOption("-s|--state")]
             public string State { get; set; }
         }
@@ -26,6 +33,16 @@ namespace DP832.CLI.Commands
         /// <inheritdoc/>
         public override int Execute(CommandContext context, Settings settings, CancellationToken cancellationToken)
         {
+            if (settings.Channel != 1 && settings.Channel != 2)
+            {
+                string msg = "--channel must be 1 or 2 (only CH1 and CH2 support tracking).";
+                if (settings.Json)
+                    Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object> { { "success", false }, { "error", msg } }));
+                else
+                    AnsiConsole.MarkupLine("[red]Error:[/] " + msg);
+                return 1;
+            }
+
             bool turnOn;
             if (string.Equals(settings.State, "on", StringComparison.OrdinalIgnoreCase))
                 turnOn = true;
@@ -35,27 +52,20 @@ namespace DP832.CLI.Commands
             {
                 string msg = "--state must be 'on' or 'off'.";
                 if (settings.Json)
-                {
-                    Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object>
-                    {
-                        { "success", false },
-                        { "error", msg }
-                    }));
-                }
+                    Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object> { { "success", false }, { "error", msg } }));
                 else
-                {
                     AnsiConsole.MarkupLine("[red]Error:[/] " + msg);
-                }
                 return 1;
             }
+
+            string chName = "CH" + settings.Channel;
 
             using (var device = new DP832Device(settings.Address))
             {
                 try
                 {
                     device.Connect();
-                    string stateStr = turnOn ? "ON" : "OFF";
-                    device.SendCommand(":OUTPut CH" + settings.Channel + "," + stateStr);
+                    device.SendCommand(":OUTPut:TRACk " + chName + "," + (turnOn ? "ON" : "OFF"));
 
                     if (settings.Json)
                     {
@@ -63,30 +73,21 @@ namespace DP832.CLI.Commands
                         {
                             { "success", true },
                             { "channel", settings.Channel },
-                            { "state", stateStr }
+                            { "enabled", turnOn }
                         }));
                     }
                     else
                     {
-                        AnsiConsole.MarkupLine(
-                            "[green]CH" + settings.Channel + " output set to " + stateStr + ".[/]");
+                        AnsiConsole.MarkupLine("[green]" + chName + " tracking " + (turnOn ? "enabled" : "disabled") + ".[/]");
                     }
                     return 0;
                 }
                 catch (Exception ex)
                 {
                     if (settings.Json)
-                    {
-                        Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object>
-                        {
-                            { "success", false },
-                            { "error", ex.Message }
-                        }));
-                    }
+                        Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object> { { "success", false }, { "error", ex.Message } }));
                     else
-                    {
                         AnsiConsole.MarkupLine("[red]Error:[/] " + Markup.Escape(ex.Message));
-                    }
                     return 1;
                 }
             }

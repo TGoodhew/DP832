@@ -141,6 +141,26 @@ namespace DP832.Tests
             Assert.Equal(expected, DeviceHelpers.IsValidOcpLevel(level));
         }
 
+        // ── IsValidBrightness ────────────────────────────────────────────────────
+
+        [Theory]
+        [InlineData(1,   true)]
+        [InlineData(50,  true)]
+        [InlineData(100, true)]
+        public void IsValidBrightness_ValidValues_ReturnsTrue(int brightness, bool expected)
+        {
+            Assert.Equal(expected, DeviceHelpers.IsValidBrightness(brightness));
+        }
+
+        [Theory]
+        [InlineData(0,   false)]
+        [InlineData(101, false)]
+        [InlineData(-1,  false)]
+        public void IsValidBrightness_OutOfRange_ReturnsFalse(int brightness, bool expected)
+        {
+            Assert.Equal(expected, DeviceHelpers.IsValidBrightness(brightness));
+        }
+
         // ── FormatGpibAddress ────────────────────────────────────────────────────
 
         [Theory]

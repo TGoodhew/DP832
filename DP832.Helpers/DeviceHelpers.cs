@@ -114,5 +114,15 @@ namespace DP832.Helpers
         {
             return level >= 0.001 && level <= GetChannelMaxCurrent() + 1;
         }
+
+        /// <summary>
+        /// Validates that a display brightness value is within the legal range (1–100).
+        /// </summary>
+        /// <param name="brightness">Integer brightness percentage to validate.</param>
+        /// <returns><see langword="true"/> if the value is between 1 and 100 inclusive.</returns>
+        public static bool IsValidBrightness(int brightness)
+        {
+            return brightness >= 1 && brightness <= 100;
+        }
     }
 }

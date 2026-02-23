@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using System.Threading;
@@ -11,6 +12,7 @@ namespace DP832.CLI.Commands
 {
     /// <summary>
     /// Sets the current limit for the specified DP832 channel.
+    /// Pass <c>--json</c> to receive the result as a JSON object.
     /// </summary>
     public sealed class SetCurrentCommand : Command<SetCurrentCommand.Settings>
     {
@@ -29,9 +31,22 @@ namespace DP832.CLI.Commands
             if (!DeviceHelpers.IsValidCurrent(settings.Current))
             {
                 double maxA = DeviceHelpers.GetChannelMaxCurrent();
-                AnsiConsole.MarkupLine(string.Format(
-                    "[red]Error:[/] Current {0} A is outside the valid range 0–{1} A.",
-                    settings.Current, maxA));
+                string msg = string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Current {0} A is outside the valid range 0\u2013{1} A.",
+                    settings.Current, maxA);
+                if (settings.Json)
+                {
+                    Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object>
+                    {
+                        { "success", false },
+                        { "error", msg }
+                    }));
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine("[red]Error:[/] " + msg);
+                }
                 return 1;
             }
 
@@ -45,15 +60,39 @@ namespace DP832.CLI.Commands
                         ":SOURce{0}:CURRent {1:F3}",
                         settings.Channel, settings.Current);
                     device.SendCommand(cmd);
-                    AnsiConsole.MarkupLine(string.Format(
-                        CultureInfo.InvariantCulture,
-                        "[green]CH{0} current limit set to {1:F3} A.[/]",
-                        settings.Channel, settings.Current));
+
+                    if (settings.Json)
+                    {
+                        Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object>
+                        {
+                            { "success", true },
+                            { "channel", settings.Channel },
+                            { "current", settings.Current }
+                        }));
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine(string.Format(
+                            CultureInfo.InvariantCulture,
+                            "[green]CH{0} current limit set to {1:F3} A.[/]",
+                            settings.Channel, settings.Current));
+                    }
                     return 0;
                 }
                 catch (Exception ex)
                 {
-                    AnsiConsole.MarkupLine("[red]Error:[/] " + ex.Message);
+                    if (settings.Json)
+                    {
+                        Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object>
+                        {
+                            { "success", false },
+                            { "error", ex.Message }
+                        }));
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine("[red]Error:[/] " + Markup.Escape(ex.Message));
+                    }
                     return 1;
                 }
             }

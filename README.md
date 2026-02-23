@@ -90,7 +90,7 @@ The following capabilities are planned for future releases:
 
 ## Usage
 
-### Running the Application
+### Running the Interactive Console Application
 
 From Visual Studio:
 - Press F5 to run with debugging
@@ -104,6 +104,122 @@ DP832PowerSupply\bin\Debug\net472\DP832PowerSupply.exe
 Or using dotnet CLI:
 ```bash
 dotnet run --project DP832PowerSupply
+```
+
+### Running the CLI Application
+
+The `dp832` CLI exposes every instrument function as a composable, scriptable command. All commands share the common options below:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-a\|--address` | `GPIB0::1::INSTR` | VISA resource address of the DP832 |
+| `--json` | off | Print output as JSON instead of formatted console text |
+
+Run `dp832 --help` for a full command list, or `dp832 <command> --help` for detailed help on any command.
+
+```bash
+dp832\bin\Debug\net472\dp832.exe <command> [options]
+```
+
+#### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `identify` | Query device identification string (*IDN?) |
+| `status` | Comprehensive status: all channels (set/measured V/I/W, OVP, OCP, output) + system settings |
+| `channel-status` | Detailed per-channel view (set/measured V/I/W, OVP/OCP, output, trip state) |
+| `set-voltage` | Set output voltage for a channel |
+| `set-current` | Set current limit for a channel |
+| `set-ovp` | Configure OVP level and/or enabled state for a channel |
+| `set-ocp` | Configure OCP level and/or enabled state for a channel |
+| `clear-trip` | Clear latched OVP/OCP protection trips for a channel |
+| `output` | Enable or disable the output for a channel |
+| `set-otp` | Enable or disable Over Temperature Protection |
+| `set-beeper` | Enable or disable the instrument beeper |
+| `set-brightness` | Set display brightness (1–100%) |
+| `set-screensaver` | Enable or disable the display screen saver |
+| `set-tracking-mode` | Set channel tracking mode: `SYNC` or `INDE` |
+| `set-track` | Enable or disable per-channel tracking for CH1 or CH2 |
+| `reset` | Reset device to factory defaults (*RST) |
+
+#### Examples
+
+```bash
+# Query device identification
+dp832 identify --address GPIB0::1::INSTR
+
+# Full status of all channels and system settings (as JSON for scripting)
+dp832 status --address GPIB0::1::INSTR --json
+
+# Detailed per-channel status
+dp832 channel-status --address GPIB0::1::INSTR --channel 2
+
+# Set CH1 voltage to 12 V and current limit to 1.5 A
+dp832 set-voltage --address GPIB0::1::INSTR --channel 1 --voltage 12.0
+dp832 set-current --address GPIB0::1::INSTR --channel 1 --current 1.5
+
+# Configure OVP for CH1: level 13 V, enabled
+dp832 set-ovp --address GPIB0::1::INSTR --channel 1 --level 13.0 --state on
+
+# Configure OCP for CH2: level 2 A, enabled
+dp832 set-ocp --address GPIB0::1::INSTR --channel 2 --level 2.0 --state on
+
+# Enable CH1 output, then disable it
+dp832 output --address GPIB0::1::INSTR --channel 1 --state on
+dp832 output --address GPIB0::1::INSTR --channel 1 --state off
+
+# Clear a tripped OVP/OCP protection latch on CH1
+dp832 clear-trip --address GPIB0::1::INSTR --channel 1
+
+# System settings
+dp832 set-otp          --address GPIB0::1::INSTR --state on
+dp832 set-beeper       --address GPIB0::1::INSTR --state off
+dp832 set-brightness   --address GPIB0::1::INSTR --brightness 80
+dp832 set-screensaver  --address GPIB0::1::INSTR --state on
+
+# Channel tracking
+dp832 set-tracking-mode --address GPIB0::1::INSTR --mode SYNC
+dp832 set-track         --address GPIB0::1::INSTR --channel 1 --state on
+
+# Reset device
+dp832 reset --address GPIB0::1::INSTR
+```
+
+#### JSON Output
+
+Every command supports `--json`, which prints a single JSON object to stdout. This is intended for scripting and automation.
+
+**Query commands** return the data directly:
+
+```json
+// dp832 identify --address GPIB0::1::INSTR --json
+{"identification":"Rigol Technologies,DP832,..."}
+
+// dp832 status --address GPIB0::1::INSTR --json
+{
+  "channels":[
+    {"channel":"CH1","voltageSet":12.000,"voltageMeasured":11.998,...,"outputEnabled":true},
+    {"channel":"CH2",...},
+    {"channel":"CH3",...}
+  ],
+  "system":{"trackMode":"INDE","trackCH1":false,"trackCH2":false,"otpEnabled":true,...}
+}
+```
+
+**Write commands** return a success flag and echo the applied value:
+
+```json
+// dp832 set-voltage --channel 1 --voltage 5.0 --json
+{"success":true,"channel":1,"voltage":5.000}
+
+// dp832 set-otp --state on --json
+{"success":true,"enabled":true}
+```
+
+**Error responses** (non-zero exit code) always include an `"error"` field:
+
+```json
+{"success":false,"error":"Voltage 35.0 V is outside the valid range 0–30 V for CH1."}
 ```
 
 ### Configuring Device Address
@@ -305,6 +421,7 @@ The test suite covers the following helpers in `DP832.Helpers/DeviceHelpers.cs`:
 | `IsValidCurrent` | Boundary and out-of-range values |
 | `IsValidOvpLevel` | Valid range is 0.01 V to maxVoltage+1 V per channel |
 | `IsValidOcpLevel` | Valid range is 0.001 A to 4.0 A |
+| `IsValidBrightness` | Valid range is 1–100; 0 and 101 are rejected |
 | `FormatGpibAddress` | Produces `GPIB0::<n>::INSTR` |
 | `FormatTcpipAddress` | Produces `TCPIP::<ip>::INSTR` |
 | `ParseStateFile` | Key=value parsing, skips `#` comments and blank lines, case-insensitive keys, values containing `=` |
@@ -314,7 +431,7 @@ The test suite covers the following helpers in `DP832.Helpers/DeviceHelpers.cs`:
 A successful test run looks like:
 
 ```
-Passed!  - Failed: 0, Passed: 60, Skipped: 0, Total: 60, Duration: ~40 ms
+Passed!  - Failed: 0, Passed: 66, Skipped: 0, Total: 66, Duration: ~40 ms
 ```
 
 ### Adding New Tests
@@ -333,15 +450,26 @@ DP832/
 │   ├── DP832PowerSupply.csproj   # Project file (.NET Framework 4.7.2, C# 7.3)
 │   └── README.md                  # Project-specific documentation
 ├── DP832.CLI/                     # CLI application (argument-driven, Spectre.Console.Cli)
-│   ├── Program.cs                 # CommandApp entry point
+│   ├── Program.cs                 # CommandApp entry point — registers all commands
+│   ├── JsonBuilder.cs             # Minimal JSON serialiser for --json output
 │   ├── Commands/
-│   │   ├── DeviceSettings.cs      # Base settings with --address option
-│   │   ├── ChannelSettings.cs     # Base settings adding --channel option
+│   │   ├── DeviceSettings.cs      # Base settings: --address, --json
+│   │   ├── ChannelSettings.cs     # Adds --channel option
 │   │   ├── IdentifyCommand.cs     # dp832 identify
-│   │   ├── StatusCommand.cs       # dp832 status
+│   │   ├── StatusCommand.cs       # dp832 status (all channels + system)
+│   │   ├── ChannelStatusCommand.cs# dp832 channel-status
 │   │   ├── SetVoltageCommand.cs   # dp832 set-voltage
 │   │   ├── SetCurrentCommand.cs   # dp832 set-current
+│   │   ├── SetOvpCommand.cs       # dp832 set-ovp
+│   │   ├── SetOcpCommand.cs       # dp832 set-ocp
+│   │   ├── ClearTripCommand.cs    # dp832 clear-trip
 │   │   ├── OutputCommand.cs       # dp832 output
+│   │   ├── SetOtpCommand.cs       # dp832 set-otp
+│   │   ├── SetBeeperCommand.cs    # dp832 set-beeper
+│   │   ├── SetBrightnessCommand.cs# dp832 set-brightness
+│   │   ├── SetScreenSaverCommand.cs# dp832 set-screensaver
+│   │   ├── SetTrackingModeCommand.cs# dp832 set-tracking-mode
+│   │   ├── SetTrackCommand.cs     # dp832 set-track
 │   │   └── ResetCommand.cs        # dp832 reset
 │   └── DP832.CLI.csproj          # Project file (.NET Framework 4.7.2, C# 7.3)
 ├── DP832.Core/                    # Shared device communication library (net472)
@@ -357,7 +485,7 @@ DP832/
 │   ├── DeviceHelpers.cs           # Pure business logic (parsing, validation, formatting)
 │   └── DP832.Helpers.csproj      # Project file
 ├── DP832.Tests/                   # Unit test project (net8.0, xUnit)
-│   ├── DeviceHelpersTests.cs      # 60 unit tests for DeviceHelpers
+│   ├── DeviceHelpersTests.cs      # 66 unit tests for DeviceHelpers
 │   └── DP832.Tests.csproj        # Project file
 ├── README.md                      # This file
 ├── LICENSE                        # License information
