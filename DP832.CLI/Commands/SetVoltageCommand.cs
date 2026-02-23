@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using System.Threading;
@@ -11,6 +12,7 @@ namespace DP832.CLI.Commands
 {
     /// <summary>
     /// Sets the output voltage for the specified DP832 channel.
+    /// Pass <c>--json</c> to receive the result as a JSON object.
     /// </summary>
     public sealed class SetVoltageCommand : Command<SetVoltageCommand.Settings>
     {
@@ -29,9 +31,22 @@ namespace DP832.CLI.Commands
             if (!DeviceHelpers.IsValidVoltage(settings.Voltage, settings.Channel))
             {
                 double maxV = DeviceHelpers.GetChannelMaxVoltage(settings.Channel);
-                AnsiConsole.MarkupLine(string.Format(
-                    "[red]Error:[/] Voltage {0} V is outside the valid range 0–{1} V for CH{2}.",
-                    settings.Voltage, maxV, settings.Channel));
+                string msg = string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Voltage {0} V is outside the valid range 0\u2013{1} V for CH{2}.",
+                    settings.Voltage, maxV, settings.Channel);
+                if (settings.Json)
+                {
+                    Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object>
+                    {
+                        { "success", false },
+                        { "error", msg }
+                    }));
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine("[red]Error:[/] " + msg);
+                }
                 return 1;
             }
 
@@ -45,15 +60,39 @@ namespace DP832.CLI.Commands
                         ":SOURce{0}:VOLTage {1:F3}",
                         settings.Channel, settings.Voltage);
                     device.SendCommand(cmd);
-                    AnsiConsole.MarkupLine(string.Format(
-                        CultureInfo.InvariantCulture,
-                        "[green]CH{0} voltage set to {1:F3} V.[/]",
-                        settings.Channel, settings.Voltage));
+
+                    if (settings.Json)
+                    {
+                        Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object>
+                        {
+                            { "success", true },
+                            { "channel", settings.Channel },
+                            { "voltage", settings.Voltage }
+                        }));
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine(string.Format(
+                            CultureInfo.InvariantCulture,
+                            "[green]CH{0} voltage set to {1:F3} V.[/]",
+                            settings.Channel, settings.Voltage));
+                    }
                     return 0;
                 }
                 catch (Exception ex)
                 {
-                    AnsiConsole.MarkupLine("[red]Error:[/] " + ex.Message);
+                    if (settings.Json)
+                    {
+                        Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object>
+                        {
+                            { "success", false },
+                            { "error", ex.Message }
+                        }));
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine("[red]Error:[/] " + Markup.Escape(ex.Message));
+                    }
                     return 1;
                 }
             }

@@ -17,5 +17,14 @@ namespace DP832.CLI.Commands
         [CommandOption("-a|--address")]
         [DefaultValue("GPIB0::1::INSTR")]
         public string Address { get; set; }
+
+        /// <summary>
+        /// When set, command output is printed as a JSON object instead of a formatted console table.
+        /// Useful for scripting and automation.
+        /// </summary>
+        [Description("Output the result as JSON instead of formatted console text.")]
+        [CommandOption("--json")]
+        [DefaultValue(false)]
+        public bool Json { get; set; }
     }
 }
