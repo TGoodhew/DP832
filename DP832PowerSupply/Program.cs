@@ -2,6 +2,7 @@
 using NationalInstruments.Visa;
 using System;
 using System.Globalization;
+using DP832.Helpers;
 
 namespace DP832PowerSupply
 {

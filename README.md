@@ -250,14 +250,16 @@ Where `<n>` is the channel number (1, 2, or 3) and `<CH>` is the channel name (C
 
 The solution includes a hardware-free unit test suite that runs on any platform without NI-VISA or a physical DP832 device.
 
-### Test Projects
+### Test Architecture
 
-| Project | Framework | Purpose |
-|---------|-----------|---------|
-| `DP832.Helpers` | `netstandard2.0` | Pure helper library extracted from the main app |
-| `DP832.Tests` | `net8.0` | xUnit test project targeting the helpers library |
+| Project | Framework | Role |
+|---------|-----------|------|
+| `DP832.Helpers` | `netstandard2.0` | Production library: pure business logic tested by `DP832.Tests` |
+| `DP832.Tests` | `net8.0` | Test project: xUnit tests targeting `DP832.Helpers` |
 
 The `DP832.Helpers` library contains all pure business logic (parsing, validation, address formatting) with no dependencies on NI-VISA or Spectre.Console, making it fully testable on Linux/macOS CI runners.
+
+The `DP832.Core` library defines the `IDP832Device` interface, enabling mock implementations for unit-testing higher-level logic without a physical instrument.
 
 ### Prerequisites for Running Tests
 
@@ -312,7 +314,7 @@ The test suite covers the following helpers in `DP832.Helpers/DeviceHelpers.cs`:
 A successful test run looks like:
 
 ```
-Passed!  - Failed: 0, Passed: 54, Skipped: 0, Total: 54, Duration: ~40 ms
+Passed!  - Failed: 0, Passed: 60, Skipped: 0, Total: 60, Duration: ~40 ms
 ```
 
 ### Adding New Tests
@@ -326,15 +328,36 @@ Passed!  - Failed: 0, Passed: 54, Skipped: 0, Total: 54, Duration: ~40 ms
 ```
 DP832/
 ├── DP832.sln                      # Visual Studio solution file
-├── DP832PowerSupply/              # Console application project
+├── DP832PowerSupply/              # Console application (interactive menu-driven UI)
 │   ├── Program.cs                 # Main application code
 │   ├── DP832PowerSupply.csproj   # Project file (.NET Framework 4.7.2, C# 7.3)
 │   └── README.md                  # Project-specific documentation
+├── DP832.CLI/                     # CLI application (argument-driven, Spectre.Console.Cli)
+│   ├── Program.cs                 # CommandApp entry point
+│   ├── Commands/
+│   │   ├── DeviceSettings.cs      # Base settings with --address option
+│   │   ├── ChannelSettings.cs     # Base settings adding --channel option
+│   │   ├── IdentifyCommand.cs     # dp832 identify
+│   │   ├── StatusCommand.cs       # dp832 status
+│   │   ├── SetVoltageCommand.cs   # dp832 set-voltage
+│   │   ├── SetCurrentCommand.cs   # dp832 set-current
+│   │   ├── OutputCommand.cs       # dp832 output
+│   │   └── ResetCommand.cs        # dp832 reset
+│   └── DP832.CLI.csproj          # Project file (.NET Framework 4.7.2, C# 7.3)
+├── DP832.Core/                    # Shared device communication library (net472)
+│   ├── IDP832Device.cs            # Device abstraction interface (connect, query, command, errors)
+│   ├── DP832Device.cs             # NI-VISA implementation of IDP832Device
+│   └── DP832.Core.csproj         # Project file — referenced by all front-ends
+├── DP832.WPF/                     # WPF graphical application (Windows only, net472)
+│   ├── App.xaml / App.xaml.cs    # WPF application entry point
+│   ├── MainWindow.xaml            # Main window XAML layout
+│   ├── MainWindow.xaml.cs         # Main window code-behind
+│   └── DP832.WPF.csproj          # Project file
 ├── DP832.Helpers/                 # Hardware-free helper library (netstandard2.0)
 │   ├── DeviceHelpers.cs           # Pure business logic (parsing, validation, formatting)
 │   └── DP832.Helpers.csproj      # Project file
 ├── DP832.Tests/                   # Unit test project (net8.0, xUnit)
-│   ├── DeviceHelpersTests.cs      # 54 unit tests for DeviceHelpers
+│   ├── DeviceHelpersTests.cs      # 60 unit tests for DeviceHelpers
 │   └── DP832.Tests.csproj        # Project file
 ├── README.md                      # This file
 ├── LICENSE                        # License information
@@ -344,7 +367,8 @@ DP832/
 
 ## Dependencies
 
-- **Spectre.Console** (v0.49.1) - Rich console UI framework (compatible with .NET Framework 4.7.2)
+- **Spectre.Console** (v0.54.0) - Rich console UI library; used by `DP832PowerSupply` and `DP832.CLI` for rendering tables, markup, and figlet text
+- **Spectre.Console.Cli** (v0.53.1) - Separate command-line parsing assembly from the Spectre.Console project; used by `DP832.CLI` to register and dispatch `CommandApp` commands. Must be referenced explicitly as it ships as its own NuGet package (`Spectre.Console.Cli`) rather than being bundled inside `Spectre.Console`
 - **NI-VISA .NET Framework Libraries** - NI-VISA runtime assemblies for instrument communication
   - NationalInstruments.Common.dll
   - NationalInstruments.VisaNS.dll
@@ -352,11 +376,14 @@ DP832/
 
 ## Technical Details
 
-- **Target Framework:** .NET Framework 4.7.2
+- **Target Frameworks:**
+  - `DP832PowerSupply` / `DP832.Core` / `DP832.WPF` / `DP832.CLI`: .NET Framework 4.7.2 (Windows)
+  - `DP832.Helpers`: .NET Standard 2.0 (cross-platform, no hardware dependencies)
+  - `DP832.Tests`: .NET 8.0 (cross-platform, runs on Linux/macOS CI)
 - **C# Version:** 7.3
 - **Build System:** Visual Studio solution with MSBuild
-- **UI Framework:** Spectre.Console for rich terminal interfaces
-- **Instrument Control:** NI-VISA for GPIB/TCPIP/USB communication
+- **UI Framework:** Spectre.Console (console app), WPF (graphical app)
+- **Instrument Control:** NI-VISA via `DP832.Core` (`IDP832Device` / `DP832Device`)
 
 ## Warnings
 
@@ -456,7 +483,31 @@ dotnet run
 
 ### Code Structure
 
-The application is structured as a single-file console application (`Program.cs`) with the following main components:
+The solution is divided into four projects following a layered architecture:
+
+**`DP832.Helpers`** (shared, cross-platform, no hardware dependencies):
+
+| Class / Method | Description |
+|----------------|-------------|
+| `DeviceHelpers.ParseProtectionState` | Parse SCPI ON/OFF/YES/NO/1/0 responses |
+| `DeviceHelpers.GetChannelMaxVoltage` | Channel voltage limits (CH1/CH2: 30 V, CH3: 5 V) |
+| `DeviceHelpers.GetChannelMaxCurrent` | Channel current limit (all: 3 A) |
+| `DeviceHelpers.IsValidVoltage` | Voltage range validation |
+| `DeviceHelpers.IsValidCurrent` | Current range validation |
+| `DeviceHelpers.IsValidOvpLevel` | OVP level range validation |
+| `DeviceHelpers.IsValidOcpLevel` | OCP level range validation |
+| `DeviceHelpers.FormatGpibAddress` | Format GPIB VISA resource string |
+| `DeviceHelpers.FormatTcpipAddress` | Format TCPIP VISA resource string |
+| `DeviceHelpers.ParseStateFile` | Parse key=value state file lines |
+
+**`DP832.Core`** (shared device communication layer, net472):
+
+| Class / Interface | Description |
+|-------------------|-------------|
+| `IDP832Device` | Device abstraction interface — connect, disconnect, send command/query, get errors |
+| `DP832Device` | NI-VISA implementation of `IDP832Device` |
+
+**`DP832PowerSupply`** (interactive console application, net472):
 
 | Method | Description |
 |--------|-------------|
@@ -494,6 +545,14 @@ The application is structured as a single-file console application (`Program.cs`
 | `SendCommandAndCheckErrors()` | Send a SET command and verify SCPI errors |
 | `CheckScpiErrors()` | Read and report SCPI error queue entries |
 | `PauseOnError()` | Pause execution after displaying an error |
+
+**`DP832.WPF`** (graphical Windows application skeleton, net472):
+
+| File | Description |
+|------|-------------|
+| `App.xaml / App.xaml.cs` | WPF application entry point |
+| `MainWindow.xaml` | Main window layout with connection panel and status area |
+| `MainWindow.xaml.cs` | Connect/disconnect logic using `IDP832Device` |
 
 ## Contributing
 
