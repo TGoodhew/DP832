@@ -10,6 +10,9 @@ namespace DP832.Helpers
     /// </summary>
     public static class DeviceHelpers
     {
+        // Valid TCPIP last-octet range used by ResolveAddress.
+        private const int MinValidIpOctet = 1;
+        private const int MaxValidIpOctet = 254;
         /// <summary>
         /// Parses a SCPI protection/output state response string to a boolean.
         /// "ON" (case-insensitive), "1", and "YES" (case-insensitive) map to true;
@@ -82,8 +85,11 @@ namespace DP832.Helpers
         /// <summary>
         /// Resolves a short-form address to a full VISA resource string.
         /// <list type="bullet">
-        ///   <item>A plain integer (e.g. <c>22</c>) is treated as a GPIB device number and
-        ///         expanded to <c>GPIB0::22::INSTR</c>.</item>
+        ///   <item>A plain integer with a known <paramref name="hostPrefix"/> (e.g. <c>136</c> with
+        ///         prefix <c>192.168.1</c>) is treated as a TCPIP last octet and expanded to
+        ///         <c>TCPIP::192.168.1.136::INSTR</c>.</item>
+        ///   <item>A plain integer with no <paramref name="hostPrefix"/> (e.g. <c>1</c>) is treated
+        ///         as a GPIB device number and expanded to <c>GPIB0::1::INSTR</c>.</item>
         ///   <item>A full IPv4 address (e.g. <c>192.168.1.100</c>) is wrapped as
         ///         <c>TCPIP::192.168.1.100::INSTR</c>.</item>
         ///   <item>A string that already contains <c>::</c> (a VISA resource string) is
@@ -92,8 +98,13 @@ namespace DP832.Helpers
         /// </list>
         /// </summary>
         /// <param name="address">Raw address string supplied by the user.</param>
+        /// <param name="hostPrefix">
+        /// The first three octets of the host machine's IP address (e.g. <c>192.168.1</c>),
+        /// used to expand a plain last-octet integer into a full TCPIP VISA resource string.
+        /// Pass <see langword="null"/> (the default) to fall back to GPIB expansion for plain integers.
+        /// </param>
         /// <returns>A fully-qualified VISA resource string.</returns>
-        public static string ResolveAddress(string address)
+        public static string ResolveAddress(string address, string hostPrefix = null)
         {
             if (string.IsNullOrWhiteSpace(address))
                 return address;
@@ -102,9 +113,13 @@ namespace DP832.Helpers
             if (address.Contains("::"))
                 return address;
 
-            // Plain integer → GPIB device number.
-            if (int.TryParse(address.Trim(), out int gpibNumber))
-                return FormatGpibAddress(gpibNumber);
+            // Plain integer → TCPIP last octet (when host prefix is known) or GPIB device number.
+            if (int.TryParse(address.Trim(), out int number))
+            {
+                if (!string.IsNullOrEmpty(hostPrefix) && number >= MinValidIpOctet && number <= MaxValidIpOctet)
+                    return FormatTcpipAddress($"{hostPrefix}.{number}");
+                return FormatGpibAddress(number);
+            }
 
             // Full IPv4 address (four octets) → TCPIP resource string.
             string[] parts = address.Trim().Split('.');
