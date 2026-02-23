@@ -368,7 +368,8 @@ DP832/
 
 ## Dependencies
 
-- **Spectre.Console** (v0.54.0) - Rich console UI and CLI framework used by `DP832PowerSupply` and `DP832.CLI` (includes the `Spectre.Console.Cli` command infrastructure)
+- **Spectre.Console** (v0.54.0) - Rich console UI library; used by `DP832PowerSupply` and `DP832.CLI` for rendering tables, markup, and figlet text
+- **Spectre.Console.Cli** (v0.53.1) - Separate command-line parsing assembly from the Spectre.Console project; used by `DP832.CLI` to register and dispatch `CommandApp` commands. Must be referenced explicitly as it ships as its own NuGet package (`Spectre.Console.Cli`) rather than being bundled inside `Spectre.Console`
 - **NI-VISA .NET Framework Libraries** - NI-VISA runtime assemblies for instrument communication
   - NationalInstruments.Common.dll
   - NationalInstruments.VisaNS.dll
