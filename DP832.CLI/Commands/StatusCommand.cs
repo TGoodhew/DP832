@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Threading;
 using DP832.Core;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -12,7 +13,7 @@ namespace DP832.CLI.Commands
     public sealed class StatusCommand : Command<DeviceSettings>
     {
         /// <inheritdoc/>
-        public override int Execute(CommandContext context, DeviceSettings settings)
+        public override int Execute(CommandContext context, DeviceSettings settings, CancellationToken cancellationToken)
         {
             using (var device = new DP832Device(settings.Address))
             {

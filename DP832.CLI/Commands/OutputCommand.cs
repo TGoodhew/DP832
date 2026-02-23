@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Threading;
 using DP832.Core;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -21,7 +22,7 @@ namespace DP832.CLI.Commands
         }
 
         /// <inheritdoc/>
-        public override int Execute(CommandContext context, Settings settings)
+        public override int Execute(CommandContext context, Settings settings, CancellationToken cancellationToken)
         {
             bool turnOn;
             if (string.Equals(settings.State, "on", StringComparison.OrdinalIgnoreCase))

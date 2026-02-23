@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Globalization;
+using System.Threading;
 using DP832.Core;
 using DP832.Helpers;
 using Spectre.Console;
@@ -23,7 +24,7 @@ namespace DP832.CLI.Commands
         }
 
         /// <inheritdoc/>
-        public override int Execute(CommandContext context, Settings settings)
+        public override int Execute(CommandContext context, Settings settings, CancellationToken cancellationToken)
         {
             if (!DeviceHelpers.IsValidVoltage(settings.Voltage, settings.Channel))
             {
