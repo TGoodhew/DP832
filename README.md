@@ -333,10 +333,22 @@ DP832/
 │   ├── Program.cs                 # Main application code
 │   ├── DP832PowerSupply.csproj   # Project file (.NET Framework 4.7.2, C# 7.3)
 │   └── README.md                  # Project-specific documentation
+├── DP832.CLI/                     # CLI application (argument-driven, Spectre.Console.Cli)
+│   ├── Program.cs                 # CommandApp entry point
+│   ├── Commands/
+│   │   ├── DeviceSettings.cs      # Base settings with --address option
+│   │   ├── ChannelSettings.cs     # Base settings adding --channel option
+│   │   ├── IdentifyCommand.cs     # dp832 identify
+│   │   ├── StatusCommand.cs       # dp832 status
+│   │   ├── SetVoltageCommand.cs   # dp832 set-voltage
+│   │   ├── SetCurrentCommand.cs   # dp832 set-current
+│   │   ├── OutputCommand.cs       # dp832 output
+│   │   └── ResetCommand.cs        # dp832 reset
+│   └── DP832.CLI.csproj          # Project file (.NET Framework 4.7.2, C# 7.3)
 ├── DP832.Core/                    # Shared device communication library (net472)
 │   ├── IDP832Device.cs            # Device abstraction interface (connect, query, command, errors)
 │   ├── DP832Device.cs             # NI-VISA implementation of IDP832Device
-│   └── DP832.Core.csproj         # Project file — referenced by Console and WPF front-ends
+│   └── DP832.Core.csproj         # Project file — referenced by all front-ends
 ├── DP832.WPF/                     # WPF graphical application (Windows only, net472)
 │   ├── App.xaml / App.xaml.cs    # WPF application entry point
 │   ├── MainWindow.xaml            # Main window XAML layout
@@ -356,7 +368,7 @@ DP832/
 
 ## Dependencies
 
-- **Spectre.Console** (v0.49.1) - Rich console UI framework (compatible with .NET Framework 4.7.2)
+- **Spectre.Console** (v0.54.0) - Rich console UI and CLI framework used by `DP832PowerSupply` and `DP832.CLI` (includes the `Spectre.Console.Cli` command infrastructure)
 - **NI-VISA .NET Framework Libraries** - NI-VISA runtime assemblies for instrument communication
   - NationalInstruments.Common.dll
   - NationalInstruments.VisaNS.dll

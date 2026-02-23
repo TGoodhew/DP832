@@ -22,7 +22,7 @@ namespace DP832.Core
         /// </param>
         public DP832Device(string deviceAddress)
         {
-            DeviceAddress = deviceAddress ?? throw new ArgumentNullException("deviceAddress");
+            DeviceAddress = deviceAddress ?? throw new ArgumentNullException(nameof(deviceAddress));
         }
 
         /// <inheritdoc/>

@@ -1,9 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <OutputType>Exe</OutputType>
     <TargetFramework>net472</TargetFramework>
     <LangVersion>7.3</LangVersion>
+    <AssemblyName>dp832</AssemblyName>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console" Version="0.54.0" />
+  </ItemGroup>
 
   <ItemGroup>
     <Reference Include="Ivi.Visa">
@@ -12,6 +18,11 @@
     <Reference Include="NationalInstruments.Visa">
       <HintPath>..\..\..\..\..\..\..\Program Files (x86)\IVI Foundation\VISA\Microsoft.NET\Framework32\v4.0.30319\NI VISA.NET 25.8\NationalInstruments.Visa.dll</HintPath>
     </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DP832.Core\DP832.Core.csproj" />
+    <ProjectReference Include="..\DP832.Helpers\DP832.Helpers.csproj" />
   </ItemGroup>
 
 </Project>
