@@ -80,6 +80,53 @@ namespace DP832.Helpers
         }
 
         /// <summary>
+        /// Resolves a short-form address to a full VISA resource string.
+        /// <list type="bullet">
+        ///   <item>A plain integer (e.g. <c>22</c>) is treated as a GPIB device number and
+        ///         expanded to <c>GPIB0::22::INSTR</c>.</item>
+        ///   <item>A full IPv4 address (e.g. <c>192.168.1.100</c>) is wrapped as
+        ///         <c>TCPIP::192.168.1.100::INSTR</c>.</item>
+        ///   <item>A string that already contains <c>::</c> (a VISA resource string) is
+        ///         returned unchanged.</item>
+        ///   <item>Any other value is returned unchanged.</item>
+        /// </list>
+        /// </summary>
+        /// <param name="address">Raw address string supplied by the user.</param>
+        /// <returns>A fully-qualified VISA resource string.</returns>
+        public static string ResolveAddress(string address)
+        {
+            if (string.IsNullOrWhiteSpace(address))
+                return address;
+
+            // Already a VISA resource string.
+            if (address.Contains("::"))
+                return address;
+
+            // Plain integer → GPIB device number.
+            if (int.TryParse(address.Trim(), out int gpibNumber))
+                return FormatGpibAddress(gpibNumber);
+
+            // Full IPv4 address (four octets) → TCPIP resource string.
+            string[] parts = address.Trim().Split('.');
+            if (parts.Length == 4)
+            {
+                bool valid = true;
+                foreach (string part in parts)
+                {
+                    if (!int.TryParse(part, out int octet) || octet < 0 || octet > 255)
+                    {
+                        valid = false;
+                        break;
+                    }
+                }
+                if (valid)
+                    return FormatTcpipAddress(address.Trim());
+            }
+
+            return address;
+        }
+
+        /// <summary>
         /// Validates that a voltage value is within the legal range for the given channel
         /// (0 to GetChannelMaxVoltage).
         /// </summary>

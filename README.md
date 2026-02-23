@@ -112,7 +112,7 @@ The `dp832` CLI exposes every instrument function as a composable, scriptable co
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `-a\|--address` | `GPIB0::1::INSTR` | VISA resource address of the DP832 |
+| `-a\|--address` | `GPIB0::1::INSTR` | VISA resource address of the DP832. Accepts a full VISA string, a plain GPIB number (e.g. `1` → `GPIB0::1::INSTR`), or a bare IP address (e.g. `192.168.1.100` → `TCPIP::192.168.1.100::INSTR`). |
 | `--json` | off | Print output as JSON instead of formatted console text |
 
 Run `dp832 --help` for a full command list, or `dp832 <command> --help` for detailed help on any command.
