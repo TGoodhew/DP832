@@ -1,5 +1,7 @@
 using System;
 using System.Globalization;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Text;
 using System.Windows;
 using DP832.Core;
@@ -17,10 +19,11 @@ namespace DP832.WPF
     {
         private IDP832Device _device;
 
-        /// <summary>Initialises the main window.</summary>
+        /// <summary>Initialises the main window and pre-populates the TCPIP subnet field.</summary>
         public MainWindow()
         {
             InitializeComponent();
+            TcpipSubnetBox.Text = GetHostIpPrefix() ?? string.Empty;
         }
 
         /// <summary>Disposes the device connection when the window is closed.</summary>
@@ -78,9 +81,43 @@ namespace DP832.WPF
 
         // ── Connection ───────────────────────────────────────────────────────────
 
+        /// <summary>Shows/hides the GPIB or TCPIP input panel when the mode radio buttons change.</summary>
+        private void ConnectionMode_Changed(object sender, RoutedEventArgs e)
+        {
+            if (GpibPanel == null || TcpipPanel == null)
+                return;
+
+            bool isGpib = GpibModeRadio.IsChecked == true;
+            GpibPanel.Visibility  = isGpib ? Visibility.Visible : Visibility.Collapsed;
+            TcpipPanel.Visibility = isGpib ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        /// <summary>
+        /// Builds a full VISA resource string from the currently selected connection mode
+        /// and the values entered in the mode-specific input fields.
+        /// </summary>
+        private string BuildAddress()
+        {
+            if (GpibModeRadio.IsChecked == true)
+            {
+                string raw = GpibDeviceNumberBox.Text.Trim();
+                // ResolveAddress with no prefix converts a plain integer to GPIB0::{n}::INSTR.
+                return DeviceHelpers.ResolveAddress(raw);
+            }
+            else
+            {
+                string prefix = TcpipSubnetBox.Text.Trim();
+                string octet  = TcpipLastOctetBox.Text.Trim();
+                if (string.IsNullOrEmpty(prefix))
+                    return DeviceHelpers.ResolveAddress(octet);
+                // ResolveAddress with a host prefix converts a plain integer to TCPIP::{prefix}.{n}::INSTR.
+                return DeviceHelpers.ResolveAddress(octet, prefix);
+            }
+        }
+
         private void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
-            string address = DeviceAddressBox.Text.Trim();
+            string address = BuildAddress();
             if (string.IsNullOrEmpty(address))
             {
                 StatusBarText.Text = "Please enter a device address.";
@@ -577,6 +614,35 @@ namespace DP832.WPF
                 return value;
             return 0.0;
         }
+
+        /// <summary>
+        /// Returns the first three octets (e.g. <c>192.168.1</c>) of the host machine's
+        /// first active non-loopback IPv4 network interface, or <see langword="null"/> if
+        /// no such interface is found.
+        /// </summary>
+        private static string GetHostIpPrefix()
+        {
+            foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (ni.OperationalStatus != OperationalStatus.Up ||
+                    ni.NetworkInterfaceType == NetworkInterfaceType.Loopback)
+                    continue;
+
+                IPInterfaceProperties props;
+                try { props = ni.GetIPProperties(); }
+                catch (NetworkInformationException) { continue; }
+
+                foreach (UnicastIPAddressInformation addr in props.UnicastAddresses)
+                {
+                    if (addr.Address.AddressFamily != AddressFamily.InterNetwork)
+                        continue;
+
+                    string[] octets = addr.Address.ToString().Split('.');
+                    if (octets.Length == 4)
+                        return $"{octets[0]}.{octets[1]}.{octets[2]}";
+                }
+            }
+            return null;
+        }
     }
 }
-

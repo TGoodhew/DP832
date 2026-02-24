@@ -30,8 +30,36 @@
                     <!-- Connection Group -->
                     <GroupBox Header="Connection" Padding="8" Margin="0,0,0,6">
                         <StackPanel>
-                            <Label Content="Device Address:" Padding="0,0,0,2"/>
-                            <TextBox x:Name="DeviceAddressBox" Text="GPIB0::1::INSTR" Margin="0,0,0,6"/>
+                            <!-- Mode selector -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <RadioButton x:Name="GpibModeRadio" Content="GPIB" IsChecked="True"
+                                             Checked="ConnectionMode_Changed" Margin="0,0,10,0"
+                                             VerticalAlignment="Center"/>
+                                <RadioButton x:Name="TcpipModeRadio" Content="TCPIP"
+                                             Checked="ConnectionMode_Changed"
+                                             VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <!-- GPIB panel -->
+                            <StackPanel x:Name="GpibPanel">
+                                <Label Content="GPIB Device Number:" Padding="0,0,0,2"/>
+                                <TextBox x:Name="GpibDeviceNumberBox" Text="1"
+                                         ToolTip="e.g. 1 → GPIB0::1::INSTR"
+                                         Margin="0,0,0,6"/>
+                            </StackPanel>
+
+                            <!-- TCPIP panel -->
+                            <StackPanel x:Name="TcpipPanel" Visibility="Collapsed">
+                                <Label Content="Subnet Prefix:" Padding="0,0,0,2"/>
+                                <TextBox x:Name="TcpipSubnetBox"
+                                         ToolTip="First three octets, e.g. 192.168.1"
+                                         Margin="0,0,0,4"/>
+                                <Label Content="Last Octet:" Padding="0,0,0,2"/>
+                                <TextBox x:Name="TcpipLastOctetBox" Text=""
+                                         ToolTip="e.g. 136 → 192.168.1.136"
+                                         Margin="0,0,0,6"/>
+                            </StackPanel>
+
                             <Button x:Name="ConnectButton" Content="Connect"
                                     Click="ConnectButton_Click" Margin="0,0,0,3"/>
                             <Button x:Name="DisconnectButton" Content="Disconnect"
