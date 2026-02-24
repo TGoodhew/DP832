@@ -95,6 +95,7 @@ namespace DP832.WPF
         /// <summary>
         /// Builds a full VISA resource string from the currently selected connection mode
         /// and the values entered in the mode-specific input fields.
+        /// Returns an empty string when input is insufficient or ambiguous.
         /// </summary>
         private string BuildAddress()
         {
@@ -108,8 +109,26 @@ namespace DP832.WPF
             {
                 string prefix = TcpipSubnetBox.Text.Trim();
                 string octet  = TcpipLastOctetBox.Text.Trim();
+
                 if (string.IsNullOrEmpty(prefix))
+                {
+                    // No subnet prefix: require a full host address, not a bare integer (which would
+                    // otherwise fall through to GPIB resolution inside ResolveAddress).
+                    if (string.IsNullOrWhiteSpace(octet))
+                        return string.Empty;
+
+                    int dummy;
+                    if (int.TryParse(octet, NumberStyles.Integer, CultureInfo.InvariantCulture, out dummy))
+                        return string.Empty;
+
+                    // Non-integer input (e.g. a full IPv4 address) is passed through as-is.
                     return DeviceHelpers.ResolveAddress(octet);
+                }
+
+                // When a prefix is supplied, a last-octet value is required.
+                if (string.IsNullOrWhiteSpace(octet))
+                    return string.Empty;
+
                 // ResolveAddress with a host prefix converts a plain integer to TCPIP::{prefix}.{n}::INSTR.
                 return DeviceHelpers.ResolveAddress(octet, prefix);
             }
@@ -120,7 +139,12 @@ namespace DP832.WPF
             string address = BuildAddress();
             if (string.IsNullOrEmpty(address))
             {
-                StatusBarText.Text = "Please enter a device address.";
+                if (TcpipModeRadio.IsChecked == true && string.IsNullOrEmpty(TcpipSubnetBox.Text.Trim()))
+                    StatusBarText.Text = "In TCPIP mode, enter a full IPv4 address in the Last Octet field, or fill in the Subnet Prefix.";
+                else if (TcpipModeRadio.IsChecked == true)
+                    StatusBarText.Text = "Enter the last IP octet (or a full IPv4 address when no subnet prefix is set).";
+                else
+                    StatusBarText.Text = "Please enter a device address.";
                 return;
             }
 
