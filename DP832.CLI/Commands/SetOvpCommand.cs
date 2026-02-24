@@ -110,6 +110,7 @@ namespace DP832.CLI.Commands
             else
             {
                 AnsiConsole.MarkupLine("[red]Error:[/] " + Markup.Escape(message));
+                AnsiConsole.MarkupLine("[grey]Usage: dp832 set-ovp [[-c <n>]] [[-l <v>]] [[-s <on|off>]] [[-a <address>]][/]");
             }
             return 1;
         }

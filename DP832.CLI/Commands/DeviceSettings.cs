@@ -43,7 +43,11 @@ namespace DP832.CLI.Commands
                 if (!IsValidNetworkInterface(ni))
                     continue;
 
-                foreach (UnicastIPAddressInformation addr in ni.GetIPProperties().UnicastAddresses)
+                IPInterfaceProperties props;
+                try { props = ni.GetIPProperties(); }
+                catch (NetworkInformationException) { continue; }
+
+                foreach (UnicastIPAddressInformation addr in props.UnicastAddresses)
                 {
                     if (addr.Address.AddressFamily != AddressFamily.InterNetwork)
                         continue;

@@ -18,9 +18,9 @@ namespace DP832.CLI.Commands
         /// <summary>Settings for the set-screensaver command.</summary>
         public sealed class Settings : DeviceSettings
         {
-            /// <summary>Desired screen saver state: <c>on</c> or <c>off</c>.</summary>
+            /// <summary>Desired screen saver state: on or off.</summary>
             [Description("Desired screen saver state: on or off.")]
-            [CommandOption("-s|--state")]
+            [CommandArgument(0, "<state>")]
             public string State { get; set; }
         }
 
@@ -38,7 +38,10 @@ namespace DP832.CLI.Commands
                 if (settings.Json)
                     Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object> { { "success", false }, { "error", msg } }));
                 else
+                {
                     AnsiConsole.MarkupLine("[red]Error:[/] " + msg);
+                    AnsiConsole.MarkupLine("[grey]Usage: dp832 set-screensaver <on|off> [[--address <address>]][/]");
+                }
                 return 1;
             }
 

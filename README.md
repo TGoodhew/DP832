@@ -141,6 +141,7 @@ dp832\bin\Debug\net472\dp832.exe <command> [options]
 | `set-tracking-mode` | Set channel tracking mode: `SYNC` or `INDE` |
 | `set-track` | Enable or disable per-channel tracking for CH1 or CH2 |
 | `reset` | Reset device to factory defaults (*RST) |
+| `help` | Show a full command reference for all commands |
 
 #### Examples
 
@@ -172,17 +173,20 @@ dp832 output --address GPIB0::1::INSTR --channel 1 --state off
 dp832 clear-trip --address GPIB0::1::INSTR --channel 1
 
 # System settings
-dp832 set-otp          --address GPIB0::1::INSTR --state on
-dp832 set-beeper       --address GPIB0::1::INSTR --state off
-dp832 set-brightness   --address GPIB0::1::INSTR --brightness 80
-dp832 set-screensaver  --address GPIB0::1::INSTR --state on
+dp832 set-otp         on  --address GPIB0::1::INSTR
+dp832 set-beeper      off --address GPIB0::1::INSTR
+dp832 set-brightness  80  --address GPIB0::1::INSTR
+dp832 set-screensaver on  --address GPIB0::1::INSTR
 
 # Channel tracking
-dp832 set-tracking-mode --address GPIB0::1::INSTR --mode SYNC
+dp832 set-tracking-mode SYNC --address GPIB0::1::INSTR
 dp832 set-track         --address GPIB0::1::INSTR --channel 1 --state on
 
 # Reset device
 dp832 reset --address GPIB0::1::INSTR
+
+# Full command reference
+dp832 help
 ```
 
 #### JSON Output

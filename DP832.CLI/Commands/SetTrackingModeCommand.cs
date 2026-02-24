@@ -19,9 +19,9 @@ namespace DP832.CLI.Commands
         /// <summary>Settings for the set-tracking-mode command.</summary>
         public sealed class Settings : DeviceSettings
         {
-            /// <summary>Tracking mode: <c>SYNC</c> (synchronised) or <c>INDE</c> (independent).</summary>
+            /// <summary>Tracking mode: SYNC (synchronised) or INDE (independent).</summary>
             [Description("Tracking mode: SYNC (synchronised) or INDE (independent).")]
-            [CommandOption("-m|--mode")]
+            [CommandArgument(0, "<mode>")]
             public string Mode { get; set; }
         }
 
@@ -39,7 +39,10 @@ namespace DP832.CLI.Commands
                 if (settings.Json)
                     Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object> { { "success", false }, { "error", msg } }));
                 else
+                {
                     AnsiConsole.MarkupLine("[red]Error:[/] " + msg);
+                    AnsiConsole.MarkupLine("[grey]Usage: dp832 set-tracking-mode <SYNC|INDE> [[--address <address>]][/]");
+                }
                 return 1;
             }
 

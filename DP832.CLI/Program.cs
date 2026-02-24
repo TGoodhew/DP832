@@ -61,23 +61,23 @@ namespace DP832.CLI
 
                 config.AddCommand<SetOtpCommand>("set-otp")
                     .WithDescription("Enable or disable the Over Temperature Protection (OTP) feature.")
-                    .WithExample(new[] { "set-otp", "--address", "GPIB0::1::INSTR", "--state", "on" });
+                    .WithExample(new[] { "set-otp", "on", "--address", "GPIB0::1::INSTR" });
 
                 config.AddCommand<SetBeeperCommand>("set-beeper")
                     .WithDescription("Enable or disable the instrument beeper.")
-                    .WithExample(new[] { "set-beeper", "--address", "GPIB0::1::INSTR", "--state", "on" });
+                    .WithExample(new[] { "set-beeper", "off", "--address", "GPIB0::1::INSTR" });
 
                 config.AddCommand<SetBrightnessCommand>("set-brightness")
                     .WithDescription("Set the display brightness (1–100%).")
-                    .WithExample(new[] { "set-brightness", "--address", "GPIB0::1::INSTR", "--brightness", "75" });
+                    .WithExample(new[] { "set-brightness", "75", "--address", "GPIB0::1::INSTR" });
 
                 config.AddCommand<SetScreenSaverCommand>("set-screensaver")
                     .WithDescription("Enable or disable the display screen saver (activates after 25 minutes of standby).")
-                    .WithExample(new[] { "set-screensaver", "--address", "GPIB0::1::INSTR", "--state", "on" });
+                    .WithExample(new[] { "set-screensaver", "on", "--address", "GPIB0::1::INSTR" });
 
                 config.AddCommand<SetTrackingModeCommand>("set-tracking-mode")
                     .WithDescription("Set the channel tracking mode: SYNC (synchronised) or INDE (independent).")
-                    .WithExample(new[] { "set-tracking-mode", "--address", "GPIB0::1::INSTR", "--mode", "SYNC" });
+                    .WithExample(new[] { "set-tracking-mode", "SYNC", "--address", "GPIB0::1::INSTR" });
 
                 config.AddCommand<SetTrackCommand>("set-track")
                     .WithDescription("Enable or disable per-channel output tracking for CH1 or CH2.")
@@ -86,6 +86,10 @@ namespace DP832.CLI
                 config.AddCommand<ResetCommand>("reset")
                     .WithDescription("Reset the device to factory defaults (*RST).")
                     .WithExample(new[] { "reset", "--address", "GPIB0::1::INSTR" });
+
+                config.AddCommand<HelpCommand>("help")
+                    .WithDescription("Show a full command reference listing every command, its parameters, and a usage example.")
+                    .WithExample(new[] { "help" });
             });
 
             return app.Run(args);
