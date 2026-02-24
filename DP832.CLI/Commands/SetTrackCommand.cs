@@ -39,7 +39,10 @@ namespace DP832.CLI.Commands
                 if (settings.Json)
                     Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object> { { "success", false }, { "error", msg } }));
                 else
+                {
                     AnsiConsole.MarkupLine("[red]Error:[/] " + msg);
+                    AnsiConsole.MarkupLine("[grey]Usage: dp832 set-track -s <on|off> [[-c <n>]] [[-a <address>]][/]");
+                }
                 return 1;
             }
 
@@ -54,7 +57,10 @@ namespace DP832.CLI.Commands
                 if (settings.Json)
                     Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object> { { "success", false }, { "error", msg } }));
                 else
+                {
                     AnsiConsole.MarkupLine("[red]Error:[/] " + msg);
+                    AnsiConsole.MarkupLine("[grey]Usage: dp832 set-track -s <on|off> [[-c <n>]] [[-a <address>]][/]");
+                }
                 return 1;
             }
 

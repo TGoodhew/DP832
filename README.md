@@ -112,7 +112,7 @@ The `dp832` CLI exposes every instrument function as a composable, scriptable co
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `-a\|--address` | `GPIB0::1::INSTR` | VISA resource address of the DP832 |
+| `-a\|--address` | `GPIB0::1::INSTR` | VISA resource address of the DP832. Accepts a full VISA string, the last IP octet (e.g. `136` → `TCPIP::192.168.1.136::INSTR` using the host's subnet), a full IP address (e.g. `192.168.1.100`), or a plain GPIB number (e.g. `1` → `GPIB0::1::INSTR`) when no network is detected. |
 | `--json` | off | Print output as JSON instead of formatted console text |
 
 Run `dp832 --help` for a full command list, or `dp832 <command> --help` for detailed help on any command.
@@ -141,6 +141,7 @@ dp832\bin\Debug\net472\dp832.exe <command> [options]
 | `set-tracking-mode` | Set channel tracking mode: `SYNC` or `INDE` |
 | `set-track` | Enable or disable per-channel tracking for CH1 or CH2 |
 | `reset` | Reset device to factory defaults (*RST) |
+| `help` | Show a full command reference for all commands |
 
 #### Examples
 
@@ -172,17 +173,20 @@ dp832 output --address GPIB0::1::INSTR --channel 1 --state off
 dp832 clear-trip --address GPIB0::1::INSTR --channel 1
 
 # System settings
-dp832 set-otp          --address GPIB0::1::INSTR --state on
-dp832 set-beeper       --address GPIB0::1::INSTR --state off
-dp832 set-brightness   --address GPIB0::1::INSTR --brightness 80
-dp832 set-screensaver  --address GPIB0::1::INSTR --state on
+dp832 set-otp         on  --address GPIB0::1::INSTR
+dp832 set-beeper      off --address GPIB0::1::INSTR
+dp832 set-brightness  80  --address GPIB0::1::INSTR
+dp832 set-screensaver on  --address GPIB0::1::INSTR
 
 # Channel tracking
-dp832 set-tracking-mode --address GPIB0::1::INSTR --mode SYNC
+dp832 set-tracking-mode SYNC --address GPIB0::1::INSTR
 dp832 set-track         --address GPIB0::1::INSTR --channel 1 --state on
 
 # Reset device
 dp832 reset --address GPIB0::1::INSTR
+
+# Full command reference
+dp832 help
 ```
 
 #### JSON Output

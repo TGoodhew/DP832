@@ -182,6 +182,74 @@ namespace DP832.Tests
             Assert.Equal(expected, DeviceHelpers.FormatTcpipAddress(ip));
         }
 
+        // ── ResolveAddress ───────────────────────────────────────────────────────
+
+        // Without a host prefix, plain integers fall back to GPIB device numbers.
+        [Theory]
+        [InlineData("1",   "GPIB0::1::INSTR")]
+        [InlineData("22",  "GPIB0::22::INSTR")]
+        [InlineData("30",  "GPIB0::30::INSTR")]
+        [InlineData(" 5 ", "GPIB0::5::INSTR")]   // leading/trailing whitespace
+        public void ResolveAddress_PlainInteger_NoHostPrefix_ReturnsGpibString(string input, string expected)
+        {
+            Assert.Equal(expected, DeviceHelpers.ResolveAddress(input));
+        }
+
+        // With a host prefix, plain integers (1-254) resolve to a TCPIP last octet.
+        [Theory]
+        [InlineData("136",  "192.168.1", "TCPIP::192.168.1.136::INSTR")]
+        [InlineData("1",    "192.168.1", "TCPIP::192.168.1.1::INSTR")]
+        [InlineData("254",  "10.0.0",    "TCPIP::10.0.0.254::INSTR")]
+        [InlineData(" 50 ", "172.16.0",  "TCPIP::172.16.0.50::INSTR")]  // whitespace trimmed
+        public void ResolveAddress_PlainInteger_WithHostPrefix_ReturnsTcpipString(string input, string prefix, string expected)
+        {
+            Assert.Equal(expected, DeviceHelpers.ResolveAddress(input, prefix));
+        }
+
+        // Out-of-range values (0 or > 254) with a host prefix still fall back to GPIB.
+        [Theory]
+        [InlineData("0",   "192.168.1", "GPIB0::0::INSTR")]
+        [InlineData("255", "192.168.1", "GPIB0::255::INSTR")]
+        public void ResolveAddress_OutOfRangeInteger_WithHostPrefix_ReturnsGpibString(string input, string prefix, string expected)
+        {
+            Assert.Equal(expected, DeviceHelpers.ResolveAddress(input, prefix));
+        }
+
+        [Theory]
+        [InlineData("192.168.1.100", "TCPIP::192.168.1.100::INSTR")]  // full IPv4
+        [InlineData("10.0.0.1",      "TCPIP::10.0.0.1::INSTR")]
+        [InlineData("0.0.0.0",       "TCPIP::0.0.0.0::INSTR")]
+        public void ResolveAddress_FullIpv4_ReturnsTcpipString(string input, string expected)
+        {
+            Assert.Equal(expected, DeviceHelpers.ResolveAddress(input));
+        }
+
+        [Theory]
+        [InlineData("GPIB0::1::INSTR")]               // already full VISA strings
+        [InlineData("TCPIP::192.168.1.100::INSTR")]
+        [InlineData("USB0::0x1AB1::0x0E11::INSTR")]
+        public void ResolveAddress_AlreadyVisaString_ReturnsUnchanged(string input)
+        {
+            Assert.Equal(input, DeviceHelpers.ResolveAddress(input));
+        }
+
+        [Theory]
+        [InlineData("")]           // empty
+        [InlineData("   ")]        // whitespace only
+        [InlineData(null)]         // null
+        public void ResolveAddress_NullOrEmpty_ReturnsUnchanged(string input)
+        {
+            Assert.Equal(input, DeviceHelpers.ResolveAddress(input));
+        }
+
+        [Theory]
+        [InlineData("not-an-address")]  // unrecognised → returned unchanged
+        [InlineData("192.168.1")]       // only 3 octets → not a full IP
+        public void ResolveAddress_UnrecognisedInput_ReturnsUnchanged(string input)
+        {
+            Assert.Equal(input, DeviceHelpers.ResolveAddress(input));
+        }
+
         // ── ParseStateFile ───────────────────────────────────────────────────────
 
         [Fact]

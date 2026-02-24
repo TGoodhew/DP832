@@ -46,6 +46,7 @@ namespace DP832.CLI.Commands
                 else
                 {
                     AnsiConsole.MarkupLine("[red]Error:[/] " + msg);
+                    AnsiConsole.MarkupLine("[grey]Usage: dp832 set-voltage -v <v> [[-c <n>]] [[-a <address>]][/]");
                 }
                 return 1;
             }

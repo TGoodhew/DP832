@@ -21,7 +21,7 @@ namespace DP832.CLI.Commands
         {
             /// <summary>Brightness percentage: 1–100.</summary>
             [Description("Display brightness percentage (1\u2013100).")]
-            [CommandOption("-b|--brightness")]
+            [CommandArgument(0, "<brightness>")]
             public int Brightness { get; set; }
         }
 
@@ -36,7 +36,10 @@ namespace DP832.CLI.Commands
                 if (settings.Json)
                     Console.WriteLine(JsonBuilder.Serialize(new Dictionary<string, object> { { "success", false }, { "error", msg } }));
                 else
+                {
                     AnsiConsole.MarkupLine("[red]Error:[/] " + msg);
+                    AnsiConsole.MarkupLine("[grey]Usage: dp832 set-brightness <brightness> [[--address <address>]][/]");
+                }
                 return 1;
             }
 
