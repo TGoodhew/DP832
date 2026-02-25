@@ -226,9 +226,46 @@ Every command supports `--json`, which prints a single JSON object to stdout. Th
 {"success":false,"error":"Voltage 35.0 V is outside the valid range 0–30 V for CH1."}
 ```
 
-### Configuring Device Address
+### Running the WPF Application
 
-The application supports multiple connection types:
+`DP832.WPF` is a Windows-only graphical front-end that exposes the same device capabilities as the CLI and console application through a point-and-click interface.
+
+#### Starting the application
+
+From Visual Studio, set `DP832.WPF` as the startup project and press **F5** (with debugging) or **Ctrl+F5** (without).
+
+From the command line:
+```bash
+DP832.WPF\bin\Debug\net472\DP832.WPF.exe
+```
+
+#### Layout
+
+The window is divided into two areas:
+
+**Left panel (scrollable)**
+
+| Group | Controls |
+|-------|----------|
+| Connection | GPIB / TCPIP radio buttons; mode-specific address fields; Connect, Disconnect, Identify buttons |
+| System Settings | Brightness, Beeper, OTP, Screen Saver, Track Mode (SYNC/INDE), Track CH1/CH2, Reset to Defaults |
+
+**Right panel (tabs)**
+
+| Tab | Controls |
+|-----|----------|
+| Status | Refresh button + read-only text area showing live V/I/W readings, OVP/OCP state and trip status, output state, and all system settings for all three channels |
+| Channel Control | Channel selector (CH1/CH2/CH3) + grouped controls for voltage, current limit, OVP (level + enable/disable), OCP (level + enable/disable), output enable/disable, and clear trip |
+
+#### Connecting to a device
+
+**GPIB mode** (default): enter the device number (e.g. `1` → `GPIB0::1::INSTR`).
+
+**TCPIP mode**: the Subnet Prefix field is pre-populated from the host machine's active network interface. Enter only the last IP octet (e.g. `136` → `TCPIP::192.168.1.136::INSTR`). If the subnet prefix is empty, enter a full IPv4 address in the Last Octet field instead.
+
+Click **Connect** to open the VISA session. All channel and system controls are enabled only after a successful connection.
+
+### Configuring Device Address
 
 #### GPIB Connection
 Default format: `GPIB0::1::INSTR`
@@ -482,8 +519,8 @@ DP832/
 │   └── DP832.Core.csproj         # Project file — referenced by all front-ends
 ├── DP832.WPF/                     # WPF graphical application (Windows only, net472)
 │   ├── App.xaml / App.xaml.cs    # WPF application entry point
-│   ├── MainWindow.xaml            # Main window XAML layout
-│   ├── MainWindow.xaml.cs         # Main window code-behind
+│   ├── MainWindow.xaml            # Main window XAML layout (connection, system settings, status, channel control)
+│   ├── MainWindow.xaml.cs         # Full UI logic: connection, status refresh, all channel/system command handlers
 │   └── DP832.WPF.csproj          # Project file
 ├── DP832.Helpers/                 # Hardware-free helper library (netstandard2.0)
 │   ├── DeviceHelpers.cs           # Pure business logic (parsing, validation, formatting)
@@ -678,13 +715,22 @@ The solution is divided into four projects following a layered architecture:
 | `CheckScpiErrors()` | Read and report SCPI error queue entries |
 | `PauseOnError()` | Pause execution after displaying an error |
 
-**`DP832.WPF`** (graphical Windows application skeleton, net472):
+**`DP832.WPF`** (graphical Windows application, net472):
 
 | File | Description |
 |------|-------------|
 | `App.xaml / App.xaml.cs` | WPF application entry point |
-| `MainWindow.xaml` | Main window layout with connection panel and status area |
-| `MainWindow.xaml.cs` | Connect/disconnect logic using `IDP832Device` |
+| `MainWindow.xaml` | Two-pane layout: scrollable left panel (connection + system settings) and tab-based right panel (Status tab + Channel Control tab) |
+| `MainWindow.xaml.cs` | Full UI logic: GPIB/TCPIP address building with host-subnet auto-detection, status refresh for all three channels and system settings, and handlers for every channel and system SCPI command |
+
+#### Key implementation details
+
+- **Address building** — `BuildAddress()` resolves the GPIB device number or TCPIP subnet prefix + last octet into a full VISA resource string using `DeviceHelpers.ResolveAddress`. In TCPIP mode, a bare integer without a subnet prefix is rejected (to avoid accidental GPIB fallback).
+- **Host subnet auto-detection** — `GetHostIpPrefix()` walks the host's active, non-loopback IPv4 interfaces at startup and pre-fills the Subnet Prefix field with the first three octets found (e.g. `192.168.1`).
+- **Connected-state management** — `SetConnectedState(bool)` centrally enables or disables all ~30 controls when the connection changes.
+- **Status refresh** — queries all three channels and all system settings, using per-channel and per-query `try/catch` blocks so a single failed query does not break the rest of the display.
+- **Input validation** — all numeric inputs (voltage, current, OVP/OCP levels, brightness) are validated via `DeviceHelpers` before sending SCPI commands.
+- **Reset confirmation** — the Reset to Defaults button shows a `MessageBox` confirmation dialog before sending `*RST`.
 
 ## Contributing
 
