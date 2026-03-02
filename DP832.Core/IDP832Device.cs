@@ -1,3 +1,4 @@
+// This file was generated entirely using GitHub Copilot (AI-assisted "vibe coding").
 using System.Collections.Generic;
 
 namespace DP832.Core

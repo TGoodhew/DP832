@@ -1,3 +1,4 @@
+// This file was generated entirely using GitHub Copilot (AI-assisted "vibe coding").
 using System;
 using System.Collections.Generic;
 using NationalInstruments.Visa;

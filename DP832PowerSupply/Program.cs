@@ -1,4 +1,5 @@
-﻿using Spectre.Console;
+﻿// This file was generated entirely using GitHub Copilot (AI-assisted "vibe coding").
+using Spectre.Console;
 using NationalInstruments.Visa;
 using System;
 using System.Globalization;
