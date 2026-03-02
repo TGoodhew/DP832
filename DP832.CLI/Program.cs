@@ -1,3 +1,4 @@
+// This file was generated entirely using GitHub Copilot (AI-assisted "vibe coding").
 using DP832.CLI.Commands;
 using Spectre.Console.Cli;
 

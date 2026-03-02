@@ -1,5 +1,7 @@
 # DP832 Power Supply Controller
 
+> 🤖 **Vibe Coded with GitHub Copilot** — This entire project, including all source code, tests, and documentation, was generated using [GitHub Copilot](https://github.com/features/copilot). No traditional hand-written code was authored; every file was produced through AI-assisted "vibe coding."
+
 A C# console application for controlling the Rigol DP832 Programmable DC Power Supply using NI-VISA and SCPI commands.
 
 ## About the DP832
