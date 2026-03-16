@@ -16,18 +16,18 @@ The Rigol DP832 is a triple-output programmable DC power supply featuring:
 ## Features
 
 This application currently provides:
-- ✨ **Beautiful Console Interface** - Powered by Spectre.Console with interactive menus
-- 🔌 **Flexible Connectivity** - Support for GPIB, TCPIP (LAN), and USB connections
-- ⚙️ **Easy Configuration** - Simple device address setup with guided prompts
-- 📡 **Device Identification** - Query device information via *IDN? SCPI command
-- 🎯 **User-Friendly** - Interactive menu-driven interface with ESC key navigation
-- ⚡ **Channel Control** - Full voltage and current control for all three channels
-- 🛡️ **Protection Controls** - Configure OVP, OCP, and OTP for safe operation
-- 🔔 **Protection Trip Alerts** - Automatic detection and display of OVP/OCP trip events
-- 🔁 **Output State Control** - Enable or disable individual channels or all channels at once
-- 🔗 **Channel Tracking** - Configure synchronised (SYNC) or independent (INDE) tracking for CH1/CH2
-- 💾 **State Save/Load** - Save and restore full device configuration to local files or device memory
-- 🔄 **Device Reset** - Reset device to factory defaults with a single menu action
+- **Beautiful Console Interface** - Powered by Spectre.Console with interactive menus
+- **Flexible Connectivity** - Support for GPIB, TCPIP (LAN), and USB connections
+- **Easy Configuration** - Simple device address setup with guided prompts
+- **Device Identification** - Query device information via *IDN? SCPI command
+- **User-Friendly** - Interactive menu-driven interface with ESC key navigation
+- **Channel Control** - Full voltage and current control for all three channels
+- **Protection Controls** - Configure OVP, OCP, and OTP for safe operation
+- **Protection Trip Alerts** - Automatic detection and display of OVP/OCP trip events
+- **Output State Control** - Enable or disable individual channels or all channels at once
+- **Channel Tracking** - Configure synchronised (SYNC) or independent (INDE) tracking for CH1/CH2
+- **State Save/Load** - Save and restore full device configuration to local files or device memory
+- **Device Reset** - Reset device to factory defaults with a single menu action
 
 ### Current Capabilities
 - Configure and change VISA resource address (GPIB/TCPIP/USB/Custom)
@@ -414,15 +414,16 @@ The solution includes a hardware-free unit test suite that runs on any platform 
 | Project | Framework | Role |
 |---------|-----------|------|
 | `DP832.Helpers` | `netstandard2.0` | Production library: pure business logic tested by `DP832.Tests` |
-| `DP832.Tests` | `net8.0` | Test project: xUnit tests targeting `DP832.Helpers` |
+| `DP832.CLI` | `net472` | Production CLI: `JsonBuilder` tested by `DP832.Tests` via `InternalsVisibleTo` |
+| `DP832.Tests` | `net472` | Test project: xUnit tests for `DP832.Helpers` and `DP832.CLI` |
 
-The `DP832.Helpers` library contains all pure business logic (parsing, validation, address formatting) with no dependencies on NI-VISA or Spectre.Console, making it fully testable on Linux/macOS CI runners.
+The `DP832.Helpers` library contains all pure business logic (parsing, validation, address formatting) with no dependencies on NI-VISA or Spectre.Console. `DP832.CLI` internals such as `JsonBuilder` are exposed to the test project via `InternalsVisibleTo`.
 
 The `DP832.Core` library defines the `IDP832Device` interface, enabling mock implementations for unit-testing higher-level logic without a physical instrument.
 
 ### Prerequisites for Running Tests
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (or later) — **NI-VISA is not required**
+- [.NET Framework 4.7.2 Developer Pack](https://dotnet.microsoft.com/download/dotnet-framework/net472) — **NI-VISA is not required**
 
 ### Running the Tests
 
@@ -453,35 +454,43 @@ dotnet test DP832.Tests/DP832.Tests.csproj --collect:"XPlat Code Coverage"
 
 ### What Is Tested
 
-The test suite covers the following helpers in `DP832.Helpers/DeviceHelpers.cs`:
+**`DP832.Helpers/DeviceHelpers.cs`**
 
 | Method | What is verified |
 |--------|-----------------|
-| `ParseProtectionState` | `ON` / `on` / `On` / `1` / ` ON ` → `true`; `OFF` / `0` / `""` / `TRUE` → `false` |
-| `GetChannelMaxVoltage` | CH1=30V, CH2=30V, CH3=5V |
+| `ParseProtectionState` | `ON`/`on`/`1`/`YES` → `true`; `OFF`/`0`/`NO`/`""`/`null` → `false`; whitespace trimmed |
+| `GetChannelMaxVoltage` | CH1=30V, CH2=30V, CH3=5V; invalid channel falls through to 30V |
 | `GetChannelMaxCurrent` | All channels return 3A |
-| `IsValidVoltage` | Boundary and out-of-range values per channel |
+| `IsValidVoltage` | Boundary and out-of-range values for CH1, CH2, and CH3 |
 | `IsValidCurrent` | Boundary and out-of-range values |
-| `IsValidOvpLevel` | Valid range is 0.01 V to maxVoltage+1 V per channel |
+| `IsValidOvpLevel` | Valid range is 0.01 V to maxVoltage+1 V for CH1, CH2, and CH3 |
 | `IsValidOcpLevel` | Valid range is 0.001 A to 4.0 A |
 | `IsValidBrightness` | Valid range is 1–100; 0 and 101 are rejected |
 | `FormatGpibAddress` | Produces `GPIB0::<n>::INSTR` |
 | `FormatTcpipAddress` | Produces `TCPIP::<ip>::INSTR` |
-| `ParseStateFile` | Key=value parsing, skips `#` comments and blank lines, case-insensitive keys, values containing `=` |
+| `ResolveAddress` | Plain integer → GPIB (no prefix) or TCPIP last-octet (with prefix); full IPv4 → TCPIP; existing VISA strings returned unchanged; null/empty/unrecognised returned unchanged |
+| `ParseStateFile` | Key=value parsing, skips `#` comments and blank lines, case-insensitive keys, values containing `=`, empty-key edge case |
+
+**`DP832.CLI/JsonBuilder.cs`**
+
+| Method | What is verified |
+|--------|-----------------|
+| `Serialize` | Empty object; scalar types (`string`, `bool`, `int`, `double`, `null`); multiple keys; nested dictionary; list of dictionaries; empty list; string escaping (`\\`, `"`, `\r`, `\n`); unknown type falls back to quoted `ToString()` |
 
 ### Expected Output
 
 A successful test run looks like:
 
 ```
-Passed!  - Failed: 0, Passed: 66, Skipped: 0, Total: 66, Duration: ~40 ms
+Passed!  - Failed: 0, Passed: 114, Skipped: 0, Total: 114, Duration: ~1 s
 ```
 
 ### Adding New Tests
 
-1. Add a new test class to `DP832.Tests/` (or add methods to `DeviceHelpersTests.cs`)
-2. If the logic to test lives in `Program.cs` and is tightly coupled to VISA/Spectre.Console, first extract it into a public static method in `DP832.Helpers/DeviceHelpers.cs`
-3. Reference the new helper from `Program.cs` and add corresponding xUnit `[Fact]` or `[Theory]` tests
+1. Add a new test class to `DP832.Tests/` (or add methods to an existing test class)
+2. Logic in `DP832.Helpers` is directly accessible — add `[Fact]` or `[Theory]` tests against it
+3. Logic in `DP832.CLI` is accessible via `InternalsVisibleTo` — `internal` types and members can be tested directly without changing their visibility
+4. Logic tightly coupled to NI-VISA or Spectre.Console cannot be unit-tested directly; extract the pure logic into a method in `DP832.Helpers` and test it there
 
 ## Project Structure
 
@@ -527,8 +536,9 @@ DP832/
 ├── DP832.Helpers/                 # Hardware-free helper library (netstandard2.0)
 │   ├── DeviceHelpers.cs           # Pure business logic (parsing, validation, formatting)
 │   └── DP832.Helpers.csproj      # Project file
-├── DP832.Tests/                   # Unit test project (net8.0, xUnit)
-│   ├── DeviceHelpersTests.cs      # 66 unit tests for DeviceHelpers
+├── DP832.Tests/                   # Unit test project (net472, xUnit)
+│   ├── DeviceHelpersTests.cs      # xUnit tests for DeviceHelpers (DP832.Helpers)
+│   ├── JsonBuilderTests.cs        # xUnit tests for JsonBuilder (DP832.CLI)
 │   └── DP832.Tests.csproj        # Project file
 ├── README.md                      # This file
 ├── LICENSE                        # License information
@@ -548,9 +558,8 @@ DP832/
 ## Technical Details
 
 - **Target Frameworks:**
-  - `DP832PowerSupply` / `DP832.Core` / `DP832.WPF` / `DP832.CLI`: .NET Framework 4.7.2 (Windows)
-  - `DP832.Helpers`: .NET Standard 2.0 (cross-platform, no hardware dependencies)
-  - `DP832.Tests`: .NET 8.0 (cross-platform, runs on Linux/macOS CI)
+  - `DP832PowerSupply` / `DP832.Core` / `DP832.WPF` / `DP832.CLI` / `DP832.Tests`: .NET Framework 4.7.2 (Windows)
+  - `DP832.Helpers`: .NET Standard 2.0 (compatible with all projects in the solution)
 - **C# Version:** 7.3
 - **Build System:** Visual Studio solution with MSBuild
 - **UI Framework:** Spectre.Console (console app), WPF (graphical app)
@@ -660,16 +669,18 @@ The solution is divided into four projects following a layered architecture:
 
 | Class / Method | Description |
 |----------------|-------------|
-| `DeviceHelpers.ParseProtectionState` | Parse SCPI ON/OFF/YES/NO/1/0 responses |
+| `DeviceHelpers.ParseProtectionState` | Parse SCPI ON/OFF/YES/NO/1/0 responses to bool |
 | `DeviceHelpers.GetChannelMaxVoltage` | Channel voltage limits (CH1/CH2: 30 V, CH3: 5 V) |
 | `DeviceHelpers.GetChannelMaxCurrent` | Channel current limit (all: 3 A) |
-| `DeviceHelpers.IsValidVoltage` | Voltage range validation |
+| `DeviceHelpers.IsValidVoltage` | Voltage range validation per channel |
 | `DeviceHelpers.IsValidCurrent` | Current range validation |
-| `DeviceHelpers.IsValidOvpLevel` | OVP level range validation |
+| `DeviceHelpers.IsValidOvpLevel` | OVP level range validation per channel |
 | `DeviceHelpers.IsValidOcpLevel` | OCP level range validation |
+| `DeviceHelpers.IsValidBrightness` | Display brightness range validation (1–100) |
 | `DeviceHelpers.FormatGpibAddress` | Format GPIB VISA resource string |
 | `DeviceHelpers.FormatTcpipAddress` | Format TCPIP VISA resource string |
-| `DeviceHelpers.ParseStateFile` | Parse key=value state file lines |
+| `DeviceHelpers.ResolveAddress` | Resolve short-form address (integer, IP, or VISA string) to full VISA resource string |
+| `DeviceHelpers.ParseStateFile` | Parse key=value state file lines into a case-insensitive dictionary |
 
 **`DP832.Core`** (shared device communication layer, net472):
 
