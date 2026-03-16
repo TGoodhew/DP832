@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using DP832.Helpers;
 using Xunit;
@@ -39,6 +40,12 @@ namespace DP832.Tests
             Assert.Equal(expected, DeviceHelpers.ParseProtectionState(input));
         }
 
+        [Fact]
+        public void ParseProtectionState_Null_ReturnsFalse()
+        {
+            Assert.False(DeviceHelpers.ParseProtectionState(null));
+        }
+
         // ── GetChannelMaxVoltage ─────────────────────────────────────────────────
 
         [Theory]
@@ -48,6 +55,14 @@ namespace DP832.Tests
         public void GetChannelMaxVoltage_ReturnsCorrectLimit(int channel, double expected)
         {
             Assert.Equal(expected, DeviceHelpers.GetChannelMaxVoltage(channel));
+        }
+
+        [Theory]
+        [InlineData(0)]   // below valid range — falls through to 30V (not CH3)
+        [InlineData(4)]   // above valid range — falls through to 30V (not CH3)
+        public void GetChannelMaxVoltage_InvalidChannel_Returns30V(int channel)
+        {
+            Assert.Equal(30.0, DeviceHelpers.GetChannelMaxVoltage(channel));
         }
 
         // ── GetChannelMaxCurrent ─────────────────────────────────────────────────
@@ -64,6 +79,8 @@ namespace DP832.Tests
         [InlineData(0.0,  1, true)]
         [InlineData(15.0, 1, true)]
         [InlineData(30.0, 1, true)]
+        [InlineData(0.0,  2, true)]   // CH2 shares 30V limit with CH1
+        [InlineData(30.0, 2, true)]
         [InlineData(0.0,  3, true)]
         [InlineData(5.0,  3, true)]
         public void IsValidVoltage_ValidValues_ReturnsTrue(double voltage, int channel, bool expected)
@@ -74,6 +91,8 @@ namespace DP832.Tests
         [Theory]
         [InlineData(-0.1, 1, false)]
         [InlineData(30.1, 1, false)]
+        [InlineData(-0.1, 2, false)]  // CH2 shares 30V limit with CH1
+        [InlineData(30.1, 2, false)]
         [InlineData(5.1,  3, false)]
         [InlineData(-1.0, 3, false)]
         public void IsValidVoltage_OutOfRange_ReturnsFalse(double voltage, int channel, bool expected)
@@ -106,6 +125,8 @@ namespace DP832.Tests
         [InlineData(0.01, 1, true)]
         [InlineData(15.0, 1, true)]
         [InlineData(31.0, 1, true)]   // max+1 is the upper bound
+        [InlineData(0.01, 2, true)]   // CH2 shares 31V upper bound with CH1
+        [InlineData(31.0, 2, true)]
         [InlineData(0.01, 3, true)]
         [InlineData(6.0,  3, true)]   // CH3 max+1
         public void IsValidOvpLevel_ValidValues_ReturnsTrue(double level, int channel, bool expected)
@@ -116,6 +137,8 @@ namespace DP832.Tests
         [Theory]
         [InlineData(0.0,  1, false)]  // below minimum 0.01
         [InlineData(31.1, 1, false)]  // above CH1/CH2 max+1
+        [InlineData(0.0,  2, false)]  // CH2 shares limits with CH1
+        [InlineData(31.1, 2, false)]
         [InlineData(6.1,  3, false)]  // above CH3 max+1
         public void IsValidOvpLevel_OutOfRange_ReturnsFalse(double level, int channel, bool expected)
         {
@@ -329,6 +352,18 @@ namespace DP832.Tests
             Dictionary<string, string> result = DeviceHelpers.ParseStateFile(Array.Empty<string>());
 
             Assert.Empty(result);
+        }
+
+        [Fact]
+        public void ParseStateFile_EmptyKey_IsStoredWithEmptyKey()
+        {
+            // A line like "=value" has an empty key — the parser stores it rather than skipping it.
+            var lines = new[] { "=orphan" };
+
+            Dictionary<string, string> result = DeviceHelpers.ParseStateFile(lines);
+
+            Assert.Single(result);
+            Assert.Equal("orphan", result[""]);
         }
     }
 }

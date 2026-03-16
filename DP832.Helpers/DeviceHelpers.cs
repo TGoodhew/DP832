@@ -22,6 +22,7 @@ namespace DP832.Helpers
         /// </summary>
         public static bool ParseProtectionState(string stateStr)
         {
+            if (stateStr == null) return false;
             string trimmedState = stateStr.Trim();
             return trimmedState.Equals("ON", StringComparison.OrdinalIgnoreCase)
                 || trimmedState == "1"
